@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arcade Fight - Placar</title>
+<link rel="shortcut icon" href="icon-arcade.png" type="image/png">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #0f0f1a;
+    color: #fff;
+    min-height: 100vh;
+    padding: 32px 16px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+
+  header h1 {
+    font-size: 36px;
+    font-weight: 900;
+    color: #e94560;
+    letter-spacing: 3px;
+  }
+
+  header p { color: #666; margin-top: 6px; font-size: 14px; }
+
+  .container { max-width: 700px; margin: 0 auto; }
+
+  .ranking-header {
+    display: grid;
+    grid-template-columns: 60px 1fr 120px 120px;
+    padding: 10px 20px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #666;
+    margin-bottom: 8px;
+  }
+
+  .card-jogador {
+    display: grid;
+    grid-template-columns: 60px 1fr 120px 120px;
+    align-items: center;
+    background: #1a1a2e;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 8px;
+    border: 1px solid #2a2a4a;
+    transition: transform .15s;
+  }
+
+  .card-jogador:hover { transform: translateX(4px); border-color: #e94560; }
+
+  .card-jogador.top1 { border-color: #ffd700; background: #1e1a0e; }
+  .card-jogador.top2 { border-color: #c0c0c0; background: #161620; }
+  .card-jogador.top3 { border-color: #cd7f32; background: #1a1510; }
+
+  .posicao {
+    font-size: 22px;
+    font-weight: 900;
+    text-align: center;
+  }
+
+  .top1 .posicao { color: #ffd700; }
+  .top2 .posicao { color: #c0c0c0; }
+  .top3 .posicao { color: #cd7f32; }
+  .posicao.normal { color: #555; font-size: 16px; }
+
+  .nick { font-size: 18px; font-weight: 700; color: #fff; }
+
+  .vitorias, .pontos {
+    text-align: center;
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .vitorias { color: #4caf50; }
+  .pontos { color: #e94560; }
+
+  .loading, .empty {
+    text-align: center;
+    color: #555;
+    padding: 40px;
+    font-size: 16px;
+  }
+
+  .empty { padding: 60px; }
+
+  .atualizado {
+    text-align: center;
+    color: #444;
+    font-size: 12px;
+    margin-top: 20px;
+  }
+
+  @media (max-width: 500px) {
+    .ranking-header, .card-jogador {
+      grid-template-columns: 48px 1fr 80px 80px;
+      padding: 12px 14px;
+    }
+    .nick { font-size: 15px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>⚔ PLACAR GERAL</h1>
+    <p>Top jogadores do arcade</p>
+  </header>
+
+  <div class="ranking-header">
+    <div>#</div>
+    <div>Jogador</div>
+    <div style="text-align:center">Vitórias</div>
+    <div style="text-align:center">Pontos</div>
+  </div>
+
+  <div id="lista"><div class="loading">Carregando ranking...</div></div>
+  <div class="atualizado" id="atualizado"></div>
+</div>
+
+<script>
+  const API = window.location.origin;
+  const medalhas = ['🥇', '🥈', '🥉'];
+
+  async function carregar() {
+    try {
+      const res = await fetch(`${API}/placar`);
+      const data = await res.json();
+      renderizar(data.ranking);
+      document.getElementById('atualizado').textContent =
+        'Atualizado em ' + new Date().toLocaleTimeString('pt-BR');
+    } catch (e) {
+      document.getElementById('lista').innerHTML =
+        '<div class="empty">Erro ao carregar. Verifique a conexão.</div>';
+    }
+  }
+
+  function renderizar(ranking) {
+    const lista = document.getElementById('lista');
+    if (!ranking || ranking.length === 0) {
+      lista.innerHTML = '<div class="empty">Nenhum jogador ainda. Seja o primeiro! 🎮</div>';
+      return;
+    }
+
+    lista.innerHTML = ranking.map((j, i) => {
+      const cls = i < 3 ? `top${i + 1}` : '';
+      const pos = i < 3
+        ? `<span class="posicao">${medalhas[i]}</span>`
+        : `<span class="posicao normal">${i + 1}</span>`;
+      return `
+        <div class="card-jogador ${cls}">
+          ${pos}
+          <div class="nick">${j.nick}</div>
+          <div class="vitorias">${j.vitorias} <small style="font-size:11px;color:#888">vitórias</small></div>
+          <div class="pontos">${j.pontos.toLocaleString('pt-BR')} <small style="font-size:11px;color:#888">pts</small></div>
+        </div>`;
+    }).join('');
+  }
+
+  carregar();
+  setInterval(carregar, 10000);
+</script>
+</body>
+</html>

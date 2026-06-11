@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Arcade Fight - Entrar</title>
+<link rel="shortcut icon" href="icon-arcade.png" type="image/png">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #0f0f1a;
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+
+  .logo {
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    color: #e94560;
+    margin-bottom: 4px;
+    text-align: center;
+  }
+
+  .subtitle {
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 28px;
+    text-align: center;
+  }
+
+  .card {
+    background: #1a1a2e;
+    border-radius: 16px;
+    padding: 26px 22px;
+    width: 100%;
+    max-width: 380px;
+    border: 1px solid #2a2a4a;
+  }
+
+  .tabs {
+    display: flex;
+    background: #0f0f1a;
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 22px;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #888;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+  }
+
+  .tab.active {
+    background: #e94560;
+    color: #fff;
+  }
+
+  .form-group { margin-bottom: 14px; }
+
+  label {
+    display: block;
+    font-size: 11px;
+    color: #aaa;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  input {
+    width: 100%;
+    padding: 13px 16px;
+    background: #0f0f1a;
+    border: 1px solid #2a2a4a;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 16px;
+    outline: none;
+    transition: border .2s;
+  }
+
+  input:focus { border-color: #e94560; }
+
+  .btn {
+    width: 100%;
+    padding: 14px;
+    background: #e94560;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background .2s, transform .1s;
+    letter-spacing: 1px;
+  }
+
+  .btn:active { transform: scale(.98); }
+  .btn:hover { background: #c73550; }
+  .btn:disabled { background: #555; cursor: not-allowed; }
+
+  .sala-info {
+    text-align: center;
+    margin-bottom: 18px;
+    padding: 10px;
+    background: #0f0f1a;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #aaa;
+  }
+
+  .sala-info span { color: #e94560; font-weight: 700; }
+
+  .msg {
+    text-align: center;
+    margin-top: 14px;
+    font-size: 14px;
+    min-height: 20px;
+  }
+
+  .msg.erro { color: #e94560; }
+  .msg.ok { color: #4caf50; }
+
+  .sucesso {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+  }
+
+  .sucesso.visible { display: flex; }
+
+  .check {
+    font-size: 64px;
+    animation: pop .4s ease;
+  }
+
+  @keyframes pop {
+    0% { transform: scale(0); }
+    70% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+  }
+
+  .sucesso h2 { font-size: 22px; color: #e94560; }
+  .sucesso .nick-display { font-size: 28px; font-weight: 900; color: #fff; }
+  .sucesso p { font-size: 14px; color: #aaa; max-width: 260px; line-height: 1.5; }
+
+  .player-badge {
+    padding: 6px 18px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  .player1 { background: #b71c1c; color: #fff; }
+  .player2 { background: #1565c0; color: #fff; }
+</style>
+</head>
+<body>
+
+<div class="logo">⚔ ARCADE FIGHT</div>
+<div class="subtitle">Identifique-se para jogar</div>
+
+<div class="card" id="cardForm">
+  <div class="sala-info" id="salaInfo">Carregando...</div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="trocarAba('login')">Entrar</button>
+    <button class="tab" onclick="trocarAba('cadastro')">Cadastrar</button>
+  </div>
+
+  <div id="abaLogin">
+    <div class="form-group">
+      <label>Seu Nick</label>
+      <input type="text" id="loginNick" placeholder="Ex: ninja123" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label>Senha</label>
+      <input type="password" id="loginSenha" placeholder="••••••">
+    </div>
+    <button class="btn" id="btnLogin" onclick="fazerLogin()">ENTRAR NO JOGO</button>
+  </div>
+
+  <div id="abaCadastro" style="display:none">
+    <div class="form-group">
+      <label>Nick (nome no placar)</label>
+      <input type="text" id="cadNick" placeholder="Ex: ninja123" maxlength="20" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label>Senha</label>
+      <input type="password" id="cadSenha" placeholder="Mínimo 4 caracteres">
+    </div>
+    <button class="btn" id="btnCad" onclick="fazerCadastro()">CRIAR CONTA E JOGAR</button>
+  </div>
+
+  <div class="msg" id="msg"></div>
+</div>
+
+<div class="card sucesso" id="cardSucesso">
+  <div class="check">✅</div>
+  <h2>Pronto!</h2>
+  <div class="nick-display" id="nickDisplay"></div>
+  <div id="playerBadge"></div>
+  <p>Olhe para a tela do arcade — a partida vai começar em instantes!</p>
+</div>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const salaId = params.get('sala');
+  const modo   = params.get('modo');
+  const API    = window.location.origin;
+
+  const infoEl = document.getElementById('salaInfo');
+  if (salaId) {
+    infoEl.innerHTML = `Sala <span>${salaId}</span> · Modo <span>${modo === 'multi' ? '2 Jogadores' : '1 Jogador'}</span>`;
+  } else {
+    infoEl.textContent = 'Sala não encontrada. Escaneie o QR Code novamente.';
+  }
+
+  function trocarAba(aba) {
+    document.getElementById('abaLogin').style.display    = aba === 'login'    ? '' : 'none';
+    document.getElementById('abaCadastro').style.display = aba === 'cadastro' ? '' : 'none';
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.classList.toggle('active', (i === 0 && aba === 'login') || (i === 1 && aba === 'cadastro'));
+    });
+    setMsg('', '');
+  }
+
+  function setMsg(texto, tipo) {
+    const el = document.getElementById('msg');
+    el.textContent = texto;
+    el.className = 'msg ' + tipo;
+  }
+
+  document.getElementById('btnLogin').dataset.label = 'ENTRAR NO JOGO';
+  document.getElementById('btnCad').dataset.label   = 'CRIAR CONTA E JOGAR';
+
+  function setLoading(btn, loading) {
+    btn.disabled = loading;
+    btn.textContent = loading ? 'Aguarde...' : btn.dataset.label;
+  }
+
+  async function entrarNaSala(token) {
+    const res = await fetch(`${API}/sala/${salaId}/entrar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token })
+    });
+    return res.json();
+  }
+
+  function mostrarSucesso(nick, slot) {
+    document.getElementById('cardForm').style.display = 'none';
+    const card = document.getElementById('cardSucesso');
+    card.classList.add('visible');
+    document.getElementById('nickDisplay').textContent = nick;
+    const badge = document.getElementById('playerBadge');
+    if (slot) {
+      badge.innerHTML = `<span class="player-badge player${slot}">PLAYER ${slot}</span>`;
+    }
+  }
+
+  async function fazerLogin() {
+    const nick = document.getElementById('loginNick').value.trim();
+    const senha = document.getElementById('loginSenha').value;
+    const btn = document.getElementById('btnLogin');
+
+    if (!nick || !senha) return setMsg('Preencha todos os campos', 'erro');
+    setLoading(btn, true);
+
+    try {
+      const res = await fetch(`${API}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nick, senha })
+      });
+      const data = await res.json();
+      if (!res.ok) return setMsg(data.detail || 'Erro ao entrar', 'erro');
+
+      const sala = await entrarNaSala(data.token);
+      if (!sala.ok) return setMsg(sala.detail || 'Não foi possível entrar na sala', 'erro');
+
+      mostrarSucesso(data.nick, sala.slot);
+    } catch (e) {
+      setMsg('Erro de conexão. Tente novamente.', 'erro');
+    } finally {
+      setLoading(btn, false);
+    }
+  }
+
+  async function fazerCadastro() {
+    const nick = document.getElementById('cadNick').value.trim();
+    const senha = document.getElementById('cadSenha').value;
+    const btn = document.getElementById('btnCad');
+
+    if (!nick || !senha) return setMsg('Preencha todos os campos', 'erro');
+    setLoading(btn, true);
+
+    try {
+      const res = await fetch(`${API}/auth/cadastro`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nick, senha })
+      });
+      const data = await res.json();
+      if (!res.ok) return setMsg(data.detail || 'Erro ao cadastrar', 'erro');
+
+      const sala = await entrarNaSala(data.token);
+      if (!sala.ok) return setMsg(sala.detail || 'Conta criada, mas erro ao entrar na sala', 'erro');
+
+      mostrarSucesso(data.nick, sala.slot);
+    } catch (e) {
+      setMsg('Erro de conexão. Tente novamente.', 'erro');
+    } finally {
+      setLoading(btn, false);
+    }
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      if (document.getElementById('abaLogin').style.display !== 'none') fazerLogin();
+      else fazerCadastro();
+    }
+  });
+</script>
+</body>
+</html>

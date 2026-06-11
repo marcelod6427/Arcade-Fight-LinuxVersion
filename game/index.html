@@ -1,0 +1,2078 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Arcade Fight</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      background: #0f0f1a;
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
+      font-family: 'Segoe UI', monospace, sans-serif;
+      color: #fff;
+    }
+
+    /* Canvas posicionado via JS (centralizado + escalonado) */
+    #gameCanvas { display: block; position: absolute; }
+
+    /* Overlay mantém 1280x720 internamente e escala via transform */
+    #overlay {
+      position: absolute;
+      pointer-events: none;
+      width: 1280px;
+      height: 720px;
+    }
+
+    /* ── Painel de QR Code ── */
+    #painelQR {
+      display: none;
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(15,15,26,0.97);
+      border: 2px solid #e94560;
+      border-radius: 20px;
+      padding: 32px 50px 28px;
+      text-align: center;
+      pointer-events: all;
+      min-width: 440px;
+    }
+
+    #painelQR h2 { font-size: 24px; color: #e94560; margin-bottom: 6px; letter-spacing: 2px; }
+    #painelQR p  { font-size: 13px; color: #aaa; margin-bottom: 18px; }
+
+    #qrImg {
+      width: 200px; height: 200px;
+      border: 4px solid #fff;
+      border-radius: 8px;
+      display: block;
+      margin: 0 auto 14px;
+      background: #fff;
+    }
+
+    #salaIdDisplay { font-size: 26px; font-weight: 900; color: #ffd700; letter-spacing: 4px; margin-bottom: 6px; }
+    #urlDisplay { font-size: 11px; color: #666; word-break: break-all; margin-bottom: 16px; }
+
+    .status-jogadores {
+      display: flex; gap: 12px;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+
+    .slot-jogador {
+      padding: 9px 18px; border-radius: 10px;
+      border: 2px solid #333;
+      font-size: 13px; font-weight: 700;
+      min-width: 120px; text-align: center;
+      transition: all .3s;
+    }
+    .slot-jogador.aguardando { color: #555; border-color: #333; }
+    .slot-jogador.p1.conectado { border-color: #e94560; color: #e94560; }
+    .slot-jogador.p2.conectado { border-color: #1565c0; color: #4fc3f7; }
+
+    /* ── Painel de seleção de dificuldade ── */
+    #painelDificuldade {
+      display: none;
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(15,15,26,0.97);
+      border: 2px solid #e94560;
+      border-radius: 20px;
+      padding: 36px 60px 28px;
+      text-align: center;
+      pointer-events: all;
+    }
+
+    #painelDificuldade h2 { color: #e94560; font-size: 22px; margin-bottom: 22px; letter-spacing: 1px; }
+
+    .btns-dif { display: flex; gap: 14px; justify-content: center; }
+
+    .btn-dif {
+      padding: 12px 26px; border-radius: 10px;
+      border: 2px solid; font-size: 15px; font-weight: 700;
+      cursor: pointer; background: transparent;
+      transition: all .15s; pointer-events: all;
+    }
+    .btn-dif.facil   { color: #4caf50; border-color: #4caf50; }
+    .btn-dif.medio   { color: #ff9800; border-color: #ff9800; }
+    .btn-dif.dificil { color: #e94560; border-color: #e94560; }
+    .btn-dif:hover, .btn-dif.focused { color: #fff; }
+    .btn-dif.facil:hover,   .btn-dif.facil.focused   { background: #4caf50; }
+    .btn-dif.medio:hover,   .btn-dif.medio.focused   { background: #ff9800; }
+    .btn-dif.dificil:hover, .btn-dif.dificil.focused { background: #e94560; }
+
+    /* ── Botões de modo na tela inicial ── */
+    #botoesInicio {
+      position: absolute; bottom: 90px;
+      width: 100%; justify-content: center; gap: 40px;
+      pointer-events: none;
+    }
+    #botoesInicio.visible { display: flex; pointer-events: all; }
+    #botoesInicio.hidden  { display: none;  pointer-events: none; }
+
+    #botoesInicio button {
+      padding: 18px 48px; border-radius: 12px;
+      font-size: 19px; font-weight: 900; letter-spacing: 2px;
+      cursor: pointer; border: 2px solid; background: transparent;
+      transition: all .15s; pointer-events: all;
+    }
+    #btnSingle { color: #e94560; border-color: #e94560; }
+    #btnMulti  { color: #4fc3f7; border-color: #4fc3f7; }
+    #btnSingle:hover, #btnSingle.focused { background: #e94560; color: #fff; }
+    #btnMulti:hover,  #btnMulti.focused  { background: #4fc3f7; color: #000; }
+
+    /* ── Legenda de comandos (só durante a luta) ── */
+    .legenda-controles {
+      position: absolute; top: 80px;
+      width: 200px; padding: 12px 14px;
+      background: rgba(15,15,26,0.85);
+      border-radius: 10px;
+      font-size: 11px; line-height: 1.7;
+      pointer-events: none; display: none;
+      font-family: monospace;
+    }
+    .legenda-controles.visible { display: block; }
+    .legenda-p1 { left: 12px; border: 2px solid #e94560; color: #ffcdd2; }
+    .legenda-p2 { right: 12px; border: 2px solid #1565c0; color: #bbdefb; }
+    .legenda-controles h4 { font-size: 13px; margin-bottom: 6px; letter-spacing: 1px; }
+    .legenda-p1 h4 { color: #e94560; }
+    .legenda-p2 h4 { color: #4fc3f7; }
+    .legenda-controles span { color: #ffd700; font-weight: 700; }
+
+    /* ── Botão Voltar (na tela QR) ── */
+    #btnVoltar {
+      position: absolute; top: 20px; left: 20px;
+      padding: 10px 20px; border-radius: 10px;
+      border: 2px solid #aaa;
+      background: rgba(15,15,26,0.9);
+      color: #aaa; font-size: 14px; font-weight: 700;
+      cursor: pointer; pointer-events: all;
+      display: none; z-index: 10; transition: all .2s;
+    }
+    #btnVoltar.visible { display: block; }
+    #btnVoltar:hover, #btnVoltar.focused { border-color: #e94560; color: #e94560; }
+
+    /* ── QR Code do placar ── */
+    #qrPlacarOverlay {
+      display: none; position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.92);
+      z-index: 15; flex-direction: column;
+      align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+    #qrPlacarOverlay.visible { display: flex; pointer-events: all; }
+    #qrPlacarOverlay h2 { color: #ffd700; font-size: 36px; margin-bottom: 8px; letter-spacing: 2px; }
+    #qrPlacarOverlay p  { color: #aaa; font-size: 16px; margin-bottom: 20px; }
+    #qrPlacarImg { width: 260px; height: 260px; background: #fff; padding: 12px; border-radius: 10px; }
+    #btnPularPlacar {
+      margin-top: 24px; padding: 13px 40px;
+      background: transparent; border: 2px solid #e94560;
+      border-radius: 10px; color: #e94560;
+      font-size: 16px; font-weight: 700; letter-spacing: 1px;
+      cursor: pointer; transition: all .2s; pointer-events: all;
+    }
+    #btnPularPlacar:hover, #btnPularPlacar.focused { background: #e94560; color: #fff; }
+
+    /* ── Jogar sem Login ── */
+    #btnJogarSemLogin {
+      margin-top: 10px;
+      padding: 9px 22px; border-radius: 8px;
+      border: 2px solid #666;
+      background: transparent;
+      color: #888; font-size: 12px; font-weight: 700;
+      cursor: pointer; transition: all .15s; pointer-events: all;
+      display: block; margin-left: auto; margin-right: auto;
+    }
+    #btnJogarSemLogin:hover, #btnJogarSemLogin.focused {
+      border-color: #ff9800; color: #ff9800;
+    }
+
+    /* ── Mensagem de erro/info ── */
+    #msgErro {
+      display: none; position: absolute; bottom: 30px;
+      width: 100%; text-align: center;
+      color: #e94560; font-size: 15px;
+      pointer-events: none;
+    }
+
+    /* ── Botão Config (canto superior esquerdo, visível só no menu) ── */
+    #btnConfig {
+      position: absolute; top: 15px; left: 15px;
+      display: none;
+      padding: 9px 14px; border-radius: 10px;
+      font-size: 18px; cursor: pointer;
+      border: 2px solid #3a3a4a;
+      background: rgba(15,15,26,0.85);
+      color: #666; transition: all .15s; pointer-events: all;
+      z-index: 5;
+    }
+    #btnConfig.visible { display: block; }
+    #btnConfig:hover, #btnConfig.focused { border-color: #e94560; color: #e94560; }
+
+    /* ── Botão Fechar Jogo (canto superior direito, espelho do Config) ── */
+    #btnFechar {
+      position: absolute; top: 15px; right: 15px;
+      display: none;
+      padding: 9px 14px; border-radius: 10px;
+      font-size: 15px; font-weight: 700; cursor: pointer;
+      border: 2px solid #3a3a4a;
+      background: rgba(15,15,26,0.85);
+      color: #666; transition: all .15s; pointer-events: all;
+      z-index: 5; font-family: monospace; letter-spacing: 1px;
+    }
+    #btnFechar.visible { display: block; }
+    #btnFechar:hover, #btnFechar.focused { border-color: #e94560; color: #e94560; }
+
+    /* ── Painel de configurações (com abas) ── */
+    #painelConfig {
+      display: none;
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(15,15,26,0.98);
+      border: 2px solid #e94560; border-radius: 18px;
+      text-align: center; pointer-events: all;
+      min-width: 530px; max-width: 590px;
+      z-index: 100; overflow: hidden;
+    }
+
+    .config-tabs {
+      display: flex; border-bottom: 1px solid #1a1a2e;
+      background: rgba(0,0,0,0.3);
+    }
+    .config-tab-btn {
+      flex: 1; padding: 11px 6px;
+      font-size: 11px; font-weight: 700; letter-spacing: 1px;
+      cursor: pointer; border: none; background: transparent;
+      color: #555; transition: all .15s; pointer-events: all;
+      font-family: monospace; border-bottom: 3px solid transparent;
+    }
+    .config-tab-btn:hover { color: #aaa; }
+    .config-tab-btn.active { color: #e94560; border-bottom-color: #e94560; }
+
+    .config-tab-content { padding: 12px 22px 0; }
+
+    .config-headers {
+      display: flex; gap: 8px; margin-bottom: 6px;
+    }
+    .config-col-header {
+      flex: 1; font-size: 10px; font-weight: 900; letter-spacing: 2px;
+      padding-bottom: 4px; text-align: center; border-bottom: 2px solid;
+    }
+    .config-col-header.player1 { color: #e94560; border-color: #e94560; }
+    .config-col-header.player2 { color: #4fc3f7; border-color: #4fc3f7; }
+
+    .config-pair { display: flex; gap: 6px; margin-bottom: 4px; }
+    .config-pair .config-linha { flex: 1; }
+
+    .config-sep-h { height: 1px; background: #252535; margin: 6px 0; }
+
+    .config-linha {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 8px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid #252535; border-radius: 7px;
+      cursor: pointer; transition: all .15s;
+      color: #fff; font-family: monospace; font-size: 11px;
+    }
+    .config-linha:hover, .config-linha.focused {
+      border-color: #555; background: rgba(255,255,255,0.07);
+    }
+    .config-linha.aguardando {
+      border-color: #ffd700; background: rgba(255,215,0,0.06);
+      animation: pulseConfig 0.7s infinite alternate;
+    }
+    @keyframes pulseConfig { from { opacity: 0.65; } to { opacity: 1.0; } }
+
+    .config-emoji  { font-size: 13px; width: 18px; flex-shrink: 0; }
+    .config-label  { flex: 1; text-align: left; font-weight: 700; }
+    .config-btn-idx {
+      font-size: 10px; font-weight: 900; color: #ffd700;
+      background: rgba(255,215,0,0.1); padding: 1px 5px;
+      border-radius: 3px; min-width: 40px; text-align: center; flex-shrink: 0;
+    }
+    .config-hint { font-size: 10px; color: #3a3a4a; margin: 5px 0 8px; }
+    .config-linha.disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+
+    .config-bottom {
+      display: flex; gap: 10px; justify-content: center;
+      padding: 12px 22px 16px; border-top: 1px solid #1a1a2e;
+    }
+    .config-bottom button {
+      padding: 7px 20px; border-radius: 7px;
+      font-size: 12px; font-weight: 700; letter-spacing: 1px;
+      cursor: pointer; border: 2px solid;
+      background: transparent; transition: all .15s; pointer-events: all;
+      font-family: monospace;
+    }
+    #btnConfigPadrao { color: #ff9800; border-color: #ff9800; }
+    #btnConfigPadrao:hover, #btnConfigPadrao.focused { background: #ff9800; color: #fff; }
+    #btnConfigFechar { color: #aaa; border-color: #aaa; }
+    #btnConfigFechar:hover, #btnConfigFechar.focused { background: #aaa; color: #000; }
+
+    /* Toggle Gamepad / Teclado */
+    .config-modo-toggle { display: flex; gap: 6px; margin-bottom: 10px; }
+    .modo-btn {
+      flex: 1; padding: 5px 8px; border-radius: 6px; border: 1px solid #333;
+      background: transparent; color: #555; font-size: 11px; font-weight: 700;
+      cursor: pointer; transition: all .15s; pointer-events: all; font-family: monospace;
+    }
+    .modo-btn.active { border-color: #e94560; color: #e94560; background: rgba(233,69,96,0.08); }
+    .modo-btn:hover  { color: #aaa; border-color: #555; }
+
+    /* Controle de volume */
+    .som-config { padding: 14px 0 8px; }
+    .som-item { margin-bottom: 18px; }
+    .som-label { display: block; color: #aaa; font-size: 12px; font-weight: 700;
+                 margin-bottom: 8px; font-family: monospace; letter-spacing: 1px; }
+    #volMaster, #volControl, #volSfx {
+      border: 1px solid #252535; border-radius: 8px; padding: 8px 10px;
+      cursor: pointer; transition: border-color .15s; outline: none;
+    }
+    #volMaster.focused, #volMaster:hover,
+    #volControl.focused, #volControl:hover,
+    #volSfx.focused,    #volSfx:hover    { border-color: #e94560; }
+    .som-slider-row { display: flex; align-items: center; gap: 12px; }
+    .som-slider-row input[type="range"] { flex: 1; accent-color: #e94560; cursor: pointer; }
+    .som-slider-row span { color: #ffd700; font-size: 14px; font-weight: 900;
+                           font-family: monospace; min-width: 38px; text-align: right; }
+    .som-hint { font-size: 10px; color: #3a3a4a; margin-top: 5px; }
+
+    /* Botão Mutar */
+    .som-mute-row { margin-top: 6px; padding-bottom: 4px; }
+    #btnMutar {
+      width: 100%; padding: 10px 0;
+      border-radius: 8px; border: 2px solid #555;
+      background: transparent; color: #888;
+      font-size: 13px; font-weight: 700; letter-spacing: 1px;
+      cursor: pointer; transition: all .15s; pointer-events: all;
+      font-family: monospace;
+    }
+    #btnMutar:hover, #btnMutar.focused { border-color: #e94560; color: #e94560; }
+    #btnMutar.muted { border-color: #e94560; color: #e94560; background: rgba(233,69,96,0.12); }
+
+    .config-creditos {
+      text-align: left; max-height: 270px;
+      overflow-y: scroll;
+      scrollbar-width: none;      /* Firefox */
+      -ms-overflow-style: none;   /* IE / Edge */
+      padding-bottom: 4px;
+    }
+    .config-creditos::-webkit-scrollbar { display: none; } /* Chrome / Electron */
+    .config-creditos section { margin-bottom: 12px; }
+    .config-creditos .cred-titulo {
+      font-size: 9px; font-weight: 900; letter-spacing: 2px;
+      color: #ffd700; text-transform: uppercase;
+      margin-bottom: 4px; padding-bottom: 3px; border-bottom: 1px solid #252535;
+    }
+    .config-creditos p, .config-creditos li { color: #777; font-size: 11px; line-height: 1.7; }
+    .config-creditos a { color: #4fc3f7; }
+    .config-creditos ul { list-style: none; padding: 0; }
+    .config-creditos ul li::before { content: '▸ '; color: #e94560; }
+    .config-creditos strong { color: #e94560; }
+
+    /* ── Modal de confirmação de saída da partida ── */
+    #confirmSaida {
+      display: none; position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 90;
+      align-items: center; justify-content: center;
+      pointer-events: all;
+    }
+    #confirmSaida.visible { display: flex; }
+    .confirm-box {
+      background: rgba(15,15,26,0.97);
+      border: 2px solid #e94560;
+      border-radius: 18px;
+      padding: 36px 48px 28px;
+      text-align: center;
+      max-width: 480px;
+    }
+    .confirm-box h3 { color: #e94560; font-size: 22px; margin-bottom: 14px; letter-spacing: 1px; }
+    .confirm-box p  { color: #aaa; font-size: 13px; line-height: 1.8; margin-bottom: 24px; }
+    .confirm-box p strong { color: #ffd700; }
+    .confirm-btns { display: flex; gap: 16px; justify-content: center; }
+    .confirm-btns button {
+      padding: 11px 34px; border-radius: 10px;
+      font-size: 15px; font-weight: 700; letter-spacing: 1px;
+      cursor: pointer; border: 2px solid;
+      background: transparent; transition: all .15s; pointer-events: all;
+      font-family: monospace;
+    }
+    #btnConfirmSim { color: #e94560; border-color: #e94560; }
+    #btnConfirmSim:hover, #btnConfirmSim.focused { background: #e94560; color: #fff; }
+    #btnConfirmNao { color: #4caf50; border-color: #4caf50; }
+    #btnConfirmNao:hover, #btnConfirmNao.focused { background: #4caf50; color: #fff; }
+
+    /* ── Notificação Offline ── */
+    #notifOffline {
+      display: none; position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(15,15,26,0.97);
+      border: 2px solid #ff9800;
+      border-radius: 16px;
+      padding: 32px 48px 26px;
+      text-align: center;
+      z-index: 200;
+      pointer-events: all;
+      min-width: 420px;
+    }
+    #notifOffline.visible { display: block; }
+    #notifOffline h3 { color: #ff9800; font-size: 22px; margin-bottom: 8px; }
+    #notifOffline p  { color: #aaa; font-size: 14px; margin-bottom: 24px; line-height: 1.6; }
+    .notif-btns { display: flex; gap: 16px; justify-content: center; }
+    .notif-btns button {
+      padding: 12px 30px; border-radius: 10px;
+      font-size: 15px; font-weight: 700;
+      cursor: pointer; border: 2px solid;
+      background: transparent; transition: all .15s;
+      pointer-events: all;
+    }
+    #notifBtnReiniciar { color: #e94560; border-color: #e94560; }
+    #notifBtnReiniciar:hover, #notifBtnReiniciar.focused { background: #e94560; color: #fff; }
+    #notifBtnContinuar { color: #4caf50; border-color: #4caf50; }
+    #notifBtnContinuar:hover, #notifBtnContinuar.focused { background: #4caf50; color: #fff; }
+  </style>
+</head>
+<body>
+
+  <canvas id="gameCanvas"></canvas>
+
+  <div id="overlay">
+
+    <!-- Botão voltar (só tela QR) -->
+    <button id="btnVoltar" onclick="voltarAoMenu()">◄ VOLTAR</button>
+
+    <!-- Legendas (só durante a luta) -->
+    <div class="legenda-controles legenda-p1" id="legendaP1">
+      <h4>◄ PLAYER 1</h4>
+      🟢 Pular<br>
+      🟡 Ataque rápido<br>
+      ⚫ Ataque forte<br>
+      🔴 Bloquear<br>
+      🔵 Especial
+    </div>
+
+    <div class="legenda-controles legenda-p2" id="legendaP2">
+      <h4>PLAYER 2 ►</h4>
+      🟢 Pular<br>
+      🟡 Ataque rápido<br>
+      ⚫ Ataque forte<br>
+      🔴 Bloquear<br>
+      🔵 Especial
+    </div>
+
+    <!-- Overlay QR placar (pós GAME OVER) -->
+    <div id="qrPlacarOverlay">
+      <h2>VEJA SEU RANKING!</h2>
+      <p>Escaneie para ver o placar completo</p>
+      <img id="qrPlacarImg" src="" alt="QR Placar">
+      <button id="btnPularPlacar" onclick="voltarMenuPosPlacar()">◄ VOLTAR AO MENU</button>
+    </div>
+
+    <!-- Botão de configurações: canto superior esquerdo, só visível no menu principal -->
+    <button id="btnConfig" onclick="abrirConfig()">⚙</button>
+
+    <!-- Botão de fechar jogo: canto superior direito, só visível no menu principal -->
+    <button id="btnFechar" onclick="fecharJogo()">✕ FECHAR</button>
+
+    <!-- Botões da tela inicial -->
+    <div id="botoesInicio">
+      <button id="btnSingle" onclick="clicarSingle()">⚔ SINGLE PLAYER</button>
+      <button id="btnMulti"  onclick="clicarMulti()">⚔ MULTI PLAYER</button>
+    </div>
+
+    <!-- Painel de configurações (abas: Som / Créditos) -->
+    <div id="painelConfig">
+      <div class="config-tabs">
+        <button class="config-tab-btn active" data-tab="som"      onclick="_mudarTab('som')">🔊 SOM</button>
+        <button class="config-tab-btn"        data-tab="creditos" onclick="_mudarTab('creditos')">ℹ CRÉDITOS</button>
+      </div>
+
+      <div id="tabSom" class="config-tab-content">
+        <div class="som-config">
+          <div class="som-item" id="volMaster" tabindex="-1">
+            <span class="som-label">🔊 Volume Geral</span>
+            <div class="som-slider-row">
+              <input type="range" id="sliderMaster" min="0" max="100" value="100"
+                     oninput="_atualizarVolumeMaster(this.value)">
+              <span id="lblMaster">100%</span>
+            </div>
+            <p class="som-hint">◄ ► para ajustar  |  ⟲ PADRÃO = 100%</p>
+          </div>
+          <div class="som-item" id="volControl" tabindex="-1">
+            <span class="som-label">🎵 Volume das Músicas</span>
+            <div class="som-slider-row">
+              <input type="range" id="sliderVolume" min="0" max="100" value="35"
+                     oninput="_atualizarVolume(this.value)">
+              <span id="lblVolume">35%</span>
+            </div>
+            <p class="som-hint">◄ ► para ajustar  |  ⟲ PADRÃO = 35%</p>
+          </div>
+          <div class="som-item" id="volSfx" tabindex="-1">
+            <span class="som-label">⚔ Sons dos Personagens</span>
+            <div class="som-slider-row">
+              <input type="range" id="sliderSfx" min="0" max="100" value="70"
+                     oninput="_atualizarVolumeSfx(this.value)">
+              <span id="lblSfx">70%</span>
+            </div>
+            <p class="som-hint">◄ ► para ajustar  |  ⟲ PADRÃO = 70%</p>
+          </div>
+          <div class="som-mute-row">
+            <button id="btnMutar" onclick="_toggleMutar()">🔇 MUTAR TUDO</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="tabCreditos" class="config-tab-content" style="display:none">
+        <div class="config-creditos" id="scrollCreditos">
+          <section>
+            <div class="cred-titulo">Sobre o Jogo</div>
+            <p>Arcade Fight é um jogo de luta 2D estilo arcade clássico com 5 personagens únicos, sistema de rounds Best-of-3, placar online e suporte a 2 jogadores simultâneos via controles arcade físicos.</p>
+          </section>
+          <section>
+            <div class="cred-titulo">Repositório</div>
+            <ul><li>github.com/marcelod6427/Arcade-Fight-IFSP</li></ul>
+          </section>
+          <section>
+            <div class="cred-titulo">Ferramentas de IA</div>
+            <ul>
+              <li><strong>Claude AI (Anthropic)</strong> — geração, revisão e refatoração de código</li>
+              <li><strong>Suno AI</strong> — composição das trilhas sonoras do jogo</li>
+              <li><strong>ChatGPT (OpenAI)</strong> — geração de imagens e pesquisa de conteúdo</li>
+            </ul>
+          </section>
+          <section>
+            <div class="cred-titulo">Recursos de Áudio</div>
+            <ul>
+              <li><strong>Pixabay</strong> — sons dos sprites e efeitos sonoros</li>
+              <li><strong>Suno AI</strong> — trilhas sonoras (menu, luta, fim de jogo)</li>
+            </ul>
+          </section>
+          <section>
+            <div class="cred-titulo">Referências &amp; Aprendizado</div>
+            <ul>
+              <li>CursoemVideo — lógica de programação e JavaScript</li>
+              <li>Alura — desenvolvimento web e boas práticas</li>
+              <li>MDN Web Docs — Canvas API, Web Gamepad API</li>
+              <li>Electron.js Docs — empacotamento desktop</li>
+            </ul>
+          </section>
+          <section>
+            <div class="cred-titulo">Tecnologias Utilizadas</div>
+            <ul>
+              <li>Frontend: HTML5 Canvas · CSS3 · JavaScript</li>
+              <li>Backend: Python FastAPI · PostgreSQL</li>
+              <li>Desktop: Electron.js · Node.js</li>
+              <li>Controles: Web Gamepad API · x360ce</li>
+            </ul>
+          </section>
+        </div>
+      </div>
+
+      <div class="config-bottom">
+        <button id="btnConfigPadrao" onclick="_resetarSubMenuAtual()">⟲ PADRÃO</button>
+        <button id="btnConfigFechar" onclick="fecharConfig()">✕ FECHAR</button>
+      </div>
+    </div>
+
+    <!-- Painel de dificuldade -->
+    <div id="painelDificuldade">
+      <h2>DIFICULDADE DA IA</h2>
+      <div class="btns-dif">
+        <button class="btn-dif facil"   onclick="escolherDif('facil')">FÁCIL</button>
+        <button class="btn-dif medio"   onclick="escolherDif('medio')">MÉDIO</button>
+        <button class="btn-dif dificil" onclick="escolherDif('dificil')">DIFÍCIL</button>
+      </div>
+    </div>
+
+    <!-- Painel QR Code -->
+    <div id="painelQR">
+      <h2 id="qrTitulo">ESCANEIE O QR CODE</h2>
+      <p id="qrSub">Acesse com seu celular para entrar no jogo</p>
+
+      <img id="qrImg" src="" alt="QR Code">
+      <div id="salaIdDisplay">------</div>
+      <div id="urlDisplay"></div>
+
+      <div class="status-jogadores">
+        <div class="slot-jogador p1 aguardando" id="slotP1">P1 — Aguardando</div>
+        <div class="slot-jogador p2 aguardando" id="slotP2" style="display:none">P2 — Aguardando</div>
+      </div>
+      <button id="btnJogarSemLogin" onclick="jogarSemLogin()">▶ Jogar sem Login</button>
+    </div>
+
+    <!-- Modal de confirmação de saída (offline e online) -->
+    <div id="confirmSaida">
+      <div class="confirm-box">
+        <h3 id="confirmTitulo">⚠ Voltar ao menu?</h3>
+        <p id="confirmAviso" style="display:none">
+          Os dados desta partida <strong>não serão salvos</strong> no placar online.<br>
+          Deseja mesmo voltar ao menu principal?
+        </p>
+        <div class="confirm-btns">
+          <button id="btnConfirmSim" onclick="_confirmarSaida()">Sim</button>
+          <button id="btnConfirmNao" onclick="_cancelarSaida()">Não</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notificação offline (aguarda escolha do jogador, sem timer) -->
+    <div id="notifOffline">
+      <h3>⚠ Sem internet</h3>
+      <p>Não foi possível conectar ao servidor.<br>
+         Partidas não serão salvas no placar.</p>
+      <div class="notif-btns">
+        <button id="notifBtnReiniciar" onclick="reiniciarApp()">Reiniciar</button>
+        <button id="notifBtnContinuar" onclick="continuarOffline()">Continuar offline</button>
+      </div>
+    </div>
+
+    <div id="msgErro"></div>
+
+  </div>
+
+  <!-- Scripts do jogo -->
+  <script src="./sprites.js"></script>
+  <script src="./controls.js"></script>
+  <script src="./api.js"></script>
+  <script src="./game.js"></script>
+
+  <script>
+    // =============================================================================
+    // index.html — Orquestração de UI e fluxo de entrada do jogo
+    //
+    // Responsabilidades:
+    //   • Escalar canvas e overlay para qualquer resolução de tela
+    //   • Verificar conectividade com o backend (Api.verificarConexao) no boot
+    //   • Exibir tela inicial → painel de dificuldade → painel QR (online)
+    //     ou iniciar direto em modo guest (offline)
+    //   • Polling de sala via Api.statusSala a cada 1.5s até os jogadores entrarem
+    //   • Navegação de menu por teclado (WASD / setas) e gamepad (analógico + D-pad)
+    //   • Atalhos globais L2/R2 via loop independente para trocar de modo a qualquer momento
+    //   • Exibir/ocultar legendas de controle durante a luta
+    //   • Exibir QR do placar pós-game via Api.placarQR
+    //   • Reiniciar app Electron via ipcRenderer quando o usuário solicita
+    //
+    // CustomEvents recebidos de game.js:
+    //   game:selectIniciado → oculta menus, para poll de gamepad de menu
+    //   game:telaInicial    → restaura botões da tela inicial (chamado por Game.voltarInicio)
+    //   game:lutaIniciou    → exibe legendas de controle
+    //   game:gameOver       → oculta legendas, agenda exibição do QR do placar
+    //
+    // CustomEvents despachados para game.js:
+    //   game:telaInicial → acionado por voltarMenuPosPlacar() ao fechar o QR do placar
+    //
+    // Calls à API (api.js):
+    //   Api.verificarConexao()                         — boot
+    //   Api.criarSala(modo)                            — criarSala()
+    //   Api.statusSala(salaId)                         — _verificarSala() (polling 1.5s)
+    //   Api.cancelarSala(salaId)                       — voltarAoMenu(), _ativarModoViaBotao()
+    //   Api.placarQR()                                 — mostrarQrPlacar()
+    //
+    // Calls ao jogo (game.js via window.Game):
+    //   Game.init()                                    — boot
+    //   Game.iniciarFluxo(modo, salaId, tokenP1)       — ao sala ficar pronta / modo offline
+    //   Game.jogadoresEntraramprontos([nick1, nick2])  — idem
+    //   Game.setDificuldade(dif)                       — escolherDif()
+    //   Game.getState()                                — tratarTeclaMenu(), _ativarModoViaBotao()
+    //   Game.voltarInicio()                            — _ativarModoViaBotao()
+    //
+    // Calls ao Controls (controls.js via window.Controls):
+    //   Controls.resetInput()   — ao iniciar fluxo e ao voltar ao menu pelo gamepad
+    // =============================================================================
+
+    // ── Sistema de som ────────────────────────────────────
+    // Três faixas: menu, luta, fim. Crossfade suave (1.5s) entre elas.
+    // Três volumes independentes: master, músicas e SFX.
+    const SoundManager = {
+      _tracks: {}, _masterVolume: 1.0, _musicVolume: 0.35, _sfxVolume: 0.7,
+      _currentKey: null, _fadeId: null, _muted: false,
+
+      _effMusic() { return this._muted ? 0 : this._masterVolume * this._musicVolume; },
+      _effSfx()   { return this._muted ? 0 : this._masterVolume * this._sfxVolume;   },
+
+      init() {
+        const savedMaster = parseFloat(localStorage.getItem('arcade_master_volume'));
+        const savedMusic  = parseFloat(localStorage.getItem('arcade_music_volume') ?? localStorage.getItem('arcade_volume'));
+        const savedSfx    = parseFloat(localStorage.getItem('arcade_sfx_volume'));
+        this._masterVolume = isNaN(savedMaster) ? 1.0  : Math.max(0, Math.min(1, savedMaster));
+        this._musicVolume  = isNaN(savedMusic)  ? 0.35 : Math.max(0, Math.min(1, savedMusic));
+        this._sfxVolume    = isNaN(savedSfx)    ? 0.7  : Math.max(0, Math.min(1, savedSfx));
+        this._muted = localStorage.getItem('arcade_muted') === '1';
+
+        const base = '../sound/';
+        const files = { menu: 'menuInicial.mp3', luta: 'luta.mp3', fim: 'fimDoJogo.mp3' };
+        for (const [key, file] of Object.entries(files)) {
+          const a    = new Audio(base + file);
+          a.loop     = true;
+          a.volume   = 0;
+          this._tracks[key] = a;
+        }
+      },
+
+      play(key) {
+        if (this._currentKey === key) return;
+        if (this._fadeId) { clearInterval(this._fadeId); this._fadeId = null; }
+
+        const oldAudio = this._currentKey ? this._tracks[this._currentKey] : null;
+        const newAudio = this._tracks[key];
+        if (!newAudio) return;
+
+        const STEPS    = 20;
+        const INTERVAL = 75;
+        this._currentKey = key;
+        const target = this._effMusic();
+
+        newAudio.volume = 0;
+        newAudio.play().catch(() => {});
+
+        let step = 0;
+        this._fadeId = setInterval(() => {
+          step++;
+          const t = step / STEPS;
+          if (oldAudio) oldAudio.volume = Math.max(0, target * (1 - t));
+          newAudio.volume               = Math.min(target, target * t);
+          if (step >= STEPS) {
+            clearInterval(this._fadeId); this._fadeId = null;
+            if (oldAudio) { oldAudio.pause(); oldAudio.currentTime = 0; oldAudio.volume = 0; }
+            newAudio.volume = target;
+          }
+        }, INTERVAL);
+      },
+
+      stop() {
+        if (this._fadeId) { clearInterval(this._fadeId); this._fadeId = null; }
+        for (const a of Object.values(this._tracks)) { a.pause(); a.currentTime = 0; a.volume = 0; }
+        this._currentKey = null;
+      },
+
+      _applyMusicVol() {
+        if (this._currentKey && this._tracks[this._currentKey])
+          this._tracks[this._currentKey].volume = this._effMusic();
+      },
+      _applySfxVol() {
+        if (window.Game && window.Game.setSfxVolume) window.Game.setSfxVolume(this._effSfx());
+      },
+
+      setMasterVolume(v) {
+        this._masterVolume = Math.max(0, Math.min(1, v));
+        localStorage.setItem('arcade_master_volume', this._masterVolume);
+        this._applyMusicVol(); this._applySfxVol();
+      },
+      setMusicVolume(v) {
+        this._musicVolume = Math.max(0, Math.min(1, v));
+        localStorage.setItem('arcade_music_volume', this._musicVolume);
+        this._applyMusicVol();
+      },
+      setSfxVolume(v) {
+        this._sfxVolume = Math.max(0, Math.min(1, v));
+        localStorage.setItem('arcade_sfx_volume', this._sfxVolume);
+        this._applySfxVol();
+      },
+      setMuted(v) {
+        this._muted = v;
+        localStorage.setItem('arcade_muted', v ? '1' : '0');
+        this._applyMusicVol(); this._applySfxVol();
+      },
+
+      setVolume(v) { this.setMusicVolume(v); },
+      getVolume()  { return this._musicVolume; }
+    };
+
+    // ── Estado local da UI ────────────────────────────────
+    // _modo:           'single' | 'multi' — modo escolhido nesta sessão
+    // _salaId:         ID da sala criada no backend (null se offline ou sem sala)
+    // _tokenP1:        JWT do P1, devolvido pelo backend ao entrar na sala
+    // _nickP1/_nickP2: nicks dos jogadores obtidos via polling da sala
+    // _polling:        ID do setInterval do polling de sala (clearInterval para parar)
+    // _dif:            dificuldade selecionada: 'facil' | 'medio' | 'dificil'
+    // _modoOffline:    true quando Api.verificarConexao retornou false no boot
+    // _telaAtual:      tela ativa para obterElementosFocaveis: 'inicial'|'dificuldade'|'qr'|'qrPlacar'|'jogando'
+    // _focusIdx:       índice do elemento focado na lista retornada por obterElementosFocaveis
+    // _menuGamepadRAF: ID do requestAnimationFrame do poll de gamepad de menu (null = parado)
+    // _menuGamepadPrev: estado anterior dos pads no poll de menu, indexado por índice do pad
+    // _shortcutPrev:   estado anterior dos botões L2/R2 no loop de atalhos globais
+    let _modo    = null;
+    let _salaId  = null;
+    let _pendenteSaida = false; // true enquanto modal de confirmação de saída está aberta
+    let _tokenP1 = null;
+    let _tokenP2 = null;
+    let _nickP1  = null;
+    let _nickP2           = null;
+    let _polling          = null;
+    let _dif              = 'medio';
+    let _modoOffline      = false;
+    let _telaAtual        = 'inicial';
+    let _focusIdx         = 0;
+    let _menuGamepadRAF   = null;
+    let _menuGamepadPrev  = {};
+    let _shortcutPrev     = {};
+    // Impede que chamadas concorrentes de _verificarSala() iniciem o jogo duas vezes.
+    // Resetado em mostrarBotoesInicio() para permitir novas partidas.
+    let _jaProntoParaJogar = false;
+
+    // ── Escala canvas + overlay para preencher a tela ─────
+    // Mantém proporção 16:9 (1280×720) via letter/pillarbox.
+    // Chamada no boot e a cada resize da janela Electron.
+    // O overlay usa CSS transform: scale() para que seus filhos operem em px 1280×720.
+    function ajustarTela() {
+      const sw = window.innerWidth  || screen.width;
+      const sh = window.innerHeight || screen.height;
+      const scale = Math.min(sw / 1280, sh / 720);
+      const cw   = Math.round(1280 * scale);
+      const ch   = Math.round(720  * scale);
+      const left = Math.round((sw - cw) / 2);
+      const top  = Math.round((sh - ch) / 2);
+
+      const canvas = document.getElementById('gameCanvas');
+      canvas.style.left   = left + 'px';
+      canvas.style.top    = top  + 'px';
+      canvas.style.width  = cw   + 'px';
+      canvas.style.height = ch   + 'px';
+
+      // Overlay mantém coordenadas 1280x720 e escala via transform
+      const overlay = document.getElementById('overlay');
+      overlay.style.left            = left + 'px';
+      overlay.style.top             = top  + 'px';
+      overlay.style.transform       = `scale(${scale})`;
+      overlay.style.transformOrigin = 'top left';
+    }
+
+    // ── Inicialização ─────────────────────────────────────
+    // Sequência de boot ao carregar a página:
+    //   1. ajustarTela() + listener de resize
+    //   2. Registra listener de teclado para menu (antes de Game.init, pois a
+    //      notificação offline pode aparecer antes do jogo estar pronto)
+    //   3. Api.verificarConexao() → se offline, exibe notifOffline e seta _modoOffline
+    //   4. Game.init() — carrega sprites, configura canvas, registra inputs (controls.js)
+    //   5. mostrarBotoesInicio() — exibe btnSingle/btnMulti
+    //   6. _iniciarShortcutsGamepad() — loop L2/R2 sempre ativo
+    //   7. Registra listeners dos CustomEvents de game.js
+    window.addEventListener('DOMContentLoaded', async () => {
+      ajustarTela();
+      window.addEventListener('resize', ajustarTela);
+      document.addEventListener('fullscreenchange', ajustarTela);
+      setTimeout(ajustarTela, 200); // garante escala correta após Electron entrar em fullscreen
+
+      // Registra teclado imediatamente — necessario para navegar na notif offline
+      // que aparece antes de Game.init() terminar
+      window.addEventListener('keydown', tratarTeclaMenu);
+
+      // Checa conectividade; enquanto resolve, o jogo ainda não carregou
+      const online = await Api.verificarConexao();
+      if (!online) mostrarNotifOffline();
+
+      await Game.init();
+      SoundManager.init();
+      mostrarBotoesInicio();
+      SoundManager.play('menu');
+
+      // L2/R2 detectados via CustomEvent disparado por controls.js (60fps, sem setInterval)
+      document.addEventListener('controls:menuBtn', e => {
+        if (e.detail.btn === 'l2') _ativarModoViaBotao('single');
+        if (e.detail.btn === 'r2') _ativarModoViaBotao('multi');
+      });
+
+      document.addEventListener('game:selectIniciado', () => {
+        const el = document.getElementById('botoesInicio');
+        el.classList.add('hidden');
+        el.classList.remove('visible');
+        document.getElementById('btnConfig').classList.remove('visible');
+        document.getElementById('btnFechar').classList.remove('visible');
+        esconder('painelDificuldade');
+        esconder('painelQR');
+        esconder('painelConfig');
+        _pararPollGamepadMenu();
+        _telaAtual = 'jogando';
+        // música de menu continua durante SELECT e QR code
+      });
+
+      document.addEventListener('game:telaInicial', () => {
+        esconderLegendas();
+        esconderQrPlacar();
+        mostrarBotoesInicio();
+        SoundManager.play('menu');
+      });
+
+      document.addEventListener('game:lutaIniciou', () => {
+        mostrarLegendas();
+        SoundManager.play('luta');
+      });
+
+      document.addEventListener('game:gameOver', () => {
+        esconderLegendas();
+        SoundManager.play('fim');
+        setTimeout(mostrarQrPlacar, 2500);
+      });
+    });
+
+    // ── Tela Inicial ──────────────────────────────────────
+
+    // Exibe os botões SINGLE PLAYER e MULTI PLAYER e zera o estado de sala.
+    // Chamada no boot, ao voltar do menu pelo gamepad, e pelo listener game:telaInicial.
+    // Não inicia o poll de gamepad de menu se a notificação offline estiver visível
+    // (a própria notifOffline já gerencia o poll).
+    function mostrarBotoesInicio() {
+      _stopPolling();
+      _jaProntoParaJogar = false;
+      _salaId = null; _tokenP1 = null; _tokenP2 = null;
+      _nickP1 = null; _nickP2 = null;
+
+      const el = document.getElementById('botoesInicio');
+      el.classList.remove('hidden');
+      el.classList.add('visible');
+      document.getElementById('btnConfig').classList.add('visible');
+      document.getElementById('btnFechar').classList.add('visible');
+      esconder('painelQR');
+      esconder('painelDificuldade');
+      esconderMsg();
+      document.getElementById('btnVoltar').classList.remove('visible');
+
+      _telaAtual = 'inicial';
+      _focusIdx  = 2; // índice 2 = btnSingle (após btnConfig e btnFechar)
+      // Nao sobrescreve foco se a notificacao offline ainda estiver visivel
+      if (!document.getElementById('notifOffline').classList.contains('visible')) {
+        atualizarFoco();
+        _iniciarPollGamepadMenu();
+      }
+    }
+
+    // Oculta os botões de modo e exibe o painel de seleção de dificuldade.
+    // Chamada pelo onclick de #btnSingle e pelo atalho L2 no gamepad (quando na tela inicial).
+    function clicarSingle() {
+      const el = document.getElementById('botoesInicio');
+      el.classList.add('hidden');
+      el.classList.remove('visible');
+      mostrar('painelDificuldade');
+      _telaAtual = 'dificuldade';
+      _focusIdx  = 0;
+      atualizarFoco();
+      _iniciarPollGamepadMenu();
+    }
+
+    // Inicia o modo multiplayer: cria sala online ou vai direto para o SELECT offline.
+    // Chamada pelo onclick de #btnMulti e pelo atalho R2 no gamepad (quando na tela inicial).
+    // Offline: Game.iniciarFluxo('multi', null, null) + Game.jogadoresEntraramprontos.
+    // Online:  chama criarSala('multi') → Api.criarSala → exibe QR.
+    function clicarMulti() {
+      const el = document.getElementById('botoesInicio');
+      el.classList.add('hidden');
+      el.classList.remove('visible');
+      _modo = 'multi';
+      if (_modoOffline) {
+        Game.iniciarFluxo('multi', null, null);
+        Game.jogadoresEntraramprontos(['Guest1', 'Guest2']);
+        return;
+      }
+      criarSala('multi');
+    }
+
+    // Registra a dificuldade escolhida e inicia o fluxo single player.
+    // Chamada pelo onclick de cada .btn-dif no painelDificuldade.
+    // Game.setDificuldade(dif) → ajusta parâmetros da IA em game.js.
+    // Offline: inicia direto com Guest1 vs CPU.
+    // Online:  chama criarSala('single') → aguarda P1 entrar via QR.
+    function escolherDif(dif) {
+      _dif = dif;
+      Game.setDificuldade(dif);
+      esconder('painelDificuldade');
+      _modo = 'single';
+      if (_modoOffline) {
+        Game.iniciarFluxo('single', null, null);
+        Game.jogadoresEntraramprontos(['Guest1', 'CPU']);
+        return;
+      }
+      criarSala('single');
+    }
+
+    // Inicia o jogo sem autenticação, descartando a sala online ativa.
+    // Só aparece no painelQR (modo online) — inicia com nicks "Guest".
+    function jogarSemLogin() {
+      _stopPolling();
+      if (_salaId) {
+        try { Api.cancelarSala && Api.cancelarSala(_salaId); } catch(e) {}
+        _salaId = null;
+      }
+      esconder('painelQR');
+      document.getElementById('btnVoltar').classList.remove('visible');
+      const nick2 = _modo === 'multi' ? 'Guest2' : 'CPU';
+      Game.iniciarFluxo(_modo, null, null, null);
+      Game.jogadoresEntraramprontos(['Guest1', nick2]);
+    }
+
+    // Cancela a sala atual (se existir) e volta para a tela inicial.
+    // Chamada pelo onclick de #btnVoltar, visível apenas na tela QR.
+    // Api.cancelarSala é chamado de forma fire-and-forget (sem await),
+    // pois o backend também expira salas inativas.
+    function voltarAoMenu() {
+      if (_salaId) {
+        try { Api.cancelarSala && Api.cancelarSala(_salaId); } catch(e) {}
+      }
+      mostrarBotoesInicio();
+    }
+
+    // ── Sala + QR Code ────────────────────────────────────
+
+    // Cria uma sala no backend e exibe o QR Code para os jogadores entrarem.
+    // modo: 'single' | 'multi'
+    // Offline: ignora API e inicia com contas Guest imediatamente.
+    // Online:
+    //   → Api.criarSala(modo) → recebe { sala_id, qr_base64, url_mobile }
+    //   → Popula #painelQR com a imagem base64 e informações da sala
+    //   → Inicia polling _verificarSala() a cada 1.5s via setInterval
+    //   → Para a sala single: oculta slot P2 (apenas P1 precisa escanear)
+    async function criarSala(modo) {
+      // Modo offline: pula API, começa com contas guest
+      if (_modoOffline) {
+        _modo = modo;
+        const nick2 = modo === 'multi' ? 'Guest2' : 'CPU';
+        Game.iniciarFluxo(modo, null, null);
+        Game.jogadoresEntraramprontos(['Guest1', nick2]);
+        return;
+      }
+
+      mostrarMsg('Conectando ao servidor...', 'info');
+
+      try {
+        const res = await Api.criarSala(modo);
+        if (!res.ok) {
+          mostrarMsg('Erro: ' + (res.erro || 'desconhecido'), 'erro');
+          setTimeout(mostrarBotoesInicio, 1500);
+          return;
+        }
+
+        _salaId = res.sala_id;
+
+        document.getElementById('qrImg').src = `data:image/png;base64,${res.qr_base64}`;
+        document.getElementById('salaIdDisplay').textContent = res.sala_id;
+        document.getElementById('urlDisplay').textContent = res.url_mobile;
+
+        _atualizar_slot('slotP1', 'P1 — Aguardando', false);
+        _atualizar_slot('slotP2', 'P2 — Aguardando', false);
+
+        if (modo === 'multi') {
+          document.getElementById('slotP2').style.display = '';
+          document.getElementById('qrTitulo').textContent = 'MODO 2 JOGADORES';
+          document.getElementById('qrSub').textContent = 'Os 2 jogadores devem escanear o mesmo QR Code';
+        } else {
+          document.getElementById('slotP2').style.display = 'none';
+          document.getElementById('qrTitulo').textContent = 'SINGLE PLAYER';
+          document.getElementById('qrSub').textContent = 'Escaneie para se identificar';
+        }
+
+        mostrar('painelQR');
+        esconderMsg();
+        document.getElementById('btnVoltar').classList.add('visible');
+        _telaAtual = 'qr';
+        _focusIdx  = 0;
+        atualizarFoco();
+        _iniciarPollGamepadMenu();
+
+        _polling = setInterval(_verificarSala, 1500);
+
+      } catch (e) {
+        console.error('[criarSala]', e);
+        mostrarMsg('Backend offline! ' + e.message, 'erro');
+        setTimeout(mostrarBotoesInicio, 2000);
+      }
+    }
+
+    // Polling de sala executado a cada 1.5s após criarSala().
+    // → Api.statusSala(_salaId) → { jogador1, jogador2, status, modo }
+    // Atualiza os slots de jogador na UI conforme eles entram.
+    // Quando status === 'pronto' ou 'em_jogo':
+    //   → Para o polling
+    //   → Oculta painelQR e btnVoltar
+    //   → Chama Game.iniciarFluxo(modo, _salaId, _tokenP1)
+    //     e Game.jogadoresEntraramprontos([nick1, nick2]) para iniciar o SELECT
+    async function _verificarSala() {
+      // Bail out se já processamos esta sala ou se o polling foi cancelado
+      if (!_salaId || _jaProntoParaJogar) return;
+      try {
+        const sala = await Api.statusSala(_salaId);
+        if (!sala.ok) return;
+
+        // Re-verifica após o await: outra chamada concorrente pode ter chegado primeiro
+        if (_jaProntoParaJogar) return;
+
+        if (sala.jogador1) {
+          _tokenP1 = sala.jogador1.token;
+          _nickP1  = sala.jogador1.nick;
+          _atualizar_slot('slotP1', '✓ ' + sala.jogador1.nick, true);
+        }
+        if (sala.jogador2) {
+          _tokenP2 = sala.jogador2.token || null;
+          _nickP2  = sala.jogador2.nick;
+          _atualizar_slot('slotP2', '✓ ' + sala.jogador2.nick, true);
+        }
+
+        if (sala.status === 'pronto' || sala.status === 'em_jogo') {
+          _jaProntoParaJogar = true; // bloqueia qualquer chamada concorrente ainda em voo
+          _stopPolling();
+          esconder('painelQR');
+          document.getElementById('btnVoltar').classList.remove('visible');
+
+          const nick1    = _nickP1 || 'P1';
+          const nick2    = _nickP2 || (sala.modo === 'single' ? 'CPU' : 'P2');
+          const modoSnap = sala.modo;
+          const idSnap   = _salaId;
+          const tkSnap   = _tokenP1;
+          const tkSnap2  = _tokenP2;
+
+          Game.iniciarFluxo(modoSnap, idSnap, tkSnap, tkSnap2);
+          Game.jogadoresEntraramprontos([nick1, nick2]);
+        }
+      } catch (e) {
+        console.warn('[verificarSala]', e);
+      }
+    }
+
+    // Cancela o setInterval de polling de sala.
+    // Chamada em: mostrarBotoesInicio, _verificarSala (ao confirmar sala), _ativarModoViaBotao.
+    function _stopPolling() {
+      if (_polling) { clearInterval(_polling); _polling = null; }
+    }
+
+    // ── Gamepad polling para overlays de menu ─────────────
+
+    // Inicia um loop RAF exclusivo para navegação de menu por gamepad.
+    // Separado do game loop de game.js — ativo apenas quando há painéis de UI visíveis.
+    // Detecta borda de subida em analógico horizontal/vertical e D-pad para _menuGamepadNavegar,
+    // e Cruz(0)/Bolinha(1) para _menuGamepadConfirmar.
+    // Evita disparo imediato inicializando prev com o estado atual na primeira leitura do pad.
+    // Chamada em: mostrarBotoesInicio, clicarSingle, criarSala, mostrarQrPlacar, mostrarNotifOffline.
+    // Parada em:  game:selectIniciado, esconderQrPlacar, continuarOffline, reiniciarApp.
+    function _iniciarPollGamepadMenu() {
+      if (_menuGamepadRAF) return;
+      _menuGamepadPrev = {};
+      function poll() {
+        _menuGamepadRAF = requestAnimationFrame(poll);
+        if (!navigator.getGamepads) return;
+        const pads = navigator.getGamepads();
+        for (let gi = 0; gi < pads.length; gi++) {
+          const pad = pads[gi];
+          if (!pad || !pad.connected) continue;
+          // Na primeira leitura inicializa prev com o estado atual
+          // para evitar trigger imediato de botoes ja pressionados
+          if (!_menuGamepadPrev[gi]) {
+            _menuGamepadPrev[gi] = {
+              h:    pad.axes[0] || 0,
+              v:    pad.axes[1] || 0,
+              btns: Array.from({length: pad.buttons.length}, (_, b) =>
+                      !!(pad.buttons[b] && pad.buttons[b].pressed))
+            };
+            continue;
+          }
+          const prev = _menuGamepadPrev[gi];
+          const dz = 0.3;
+          const h  = pad.axes[0] || 0;
+          const v  = pad.axes[1] || 0;
+          const curLeft  = h < -dz || !!(pad.buttons[14] && pad.buttons[14].pressed);
+          const curRight = h >  dz || !!(pad.buttons[15] && pad.buttons[15].pressed);
+          const curUp    = v < -dz || !!(pad.buttons[12] && pad.buttons[12].pressed);
+          const curDown  = v >  dz || !!(pad.buttons[13] && pad.buttons[13].pressed);
+          const prevLeft  = prev.h < -dz || prev.btns[14];
+          const prevRight = prev.h >  dz || prev.btns[15];
+          const prevUp    = prev.v < -dz || prev.btns[12];
+          const prevDown  = prev.v >  dz || prev.btns[13];
+          if (curLeft  && !prevLeft)  _menuGamepadNavegar(-1, true);
+          if (curRight && !prevRight) _menuGamepadNavegar(1,  true);
+          if (curUp    && !prevUp)    _menuGamepadNavegar(-1, false);
+          if (curDown  && !prevDown)  _menuGamepadNavegar(1,  false);
+
+          // Scroll contínuo de créditos pelo analógico vertical
+          if (_telaAtual === 'config' && _configTab === 'creditos') {
+            const credEl = document.getElementById('scrollCreditos');
+            if (credEl && Math.abs(v) > 0.25) credEl.scrollTop += v * 9;
+          }
+          prev.h = h;
+          prev.v = v;
+          for (let b = 0; b < pad.buttons.length; b++) {
+            const pressed = !!(pad.buttons[b] && pad.buttons[b].pressed);
+            // Confirmar: btn0 ou btn1 (P1: verde/amarelo) | btn3 (P2: verde)
+            if (pressed && !prev.btns[b] && (b === 0 || b === 1 || b === 3)) _menuGamepadConfirmar();
+            prev.btns[b] = pressed;
+          }
+        }
+      }
+      _menuGamepadRAF = requestAnimationFrame(poll);
+    }
+
+    // Para o loop RAF de navegação de gamepad no menu e limpa o estado prev.
+    function _pararPollGamepadMenu() {
+      if (_menuGamepadRAF) { cancelAnimationFrame(_menuGamepadRAF); _menuGamepadRAF = null; }
+      _menuGamepadPrev = {};
+    }
+
+    // Navega no menu. horizontal=true: esquerda/direita; false: cima/baixo.
+    // Config: zonas A=abas | G=conteúdo (sliders/mute) | D=rodapé. Sem wrap entre zonas.
+    function _menuGamepadNavegar(dir, horizontal = false) {
+      if (_remapAtivo) return;
+
+      const els = obterElementosFocaveis();
+      if (!els.length) return;
+
+      if (_telaAtual === 'config') {
+        const TAB_COUNT  = 2;
+        const volCount   = _configTab === 'som' ? 4 : 0; // volMaster, volControl, volSfx, btnMutar
+        const rodapeCount = Math.max(0, els.length - TAB_COUNT - volCount);
+
+        const A_END = TAB_COUNT;           // 2
+        const GS    = A_END;               // conteúdo start
+        const GE    = GS + volCount;       // conteúdo end
+        const D_STA = GE;
+        const D_END = D_STA + rodapeCount;
+
+        const inA = i => i >= 0    && i < A_END;
+        const inG = i => i >= GS   && i < GE;
+        const inD = i => i >= D_STA && i < D_END;
+
+        if (horizontal) {
+          if (inA(_focusIdx)) {
+            // Clamped — sem ciclo
+            const newTab = Math.max(0, Math.min(TAB_COUNT - 1, _focusIdx + dir));
+            _focusIdx = newTab;
+            _mudarTab(['som', 'creditos'][newTab]);
+            return;
+          }
+          if (inG(_focusIdx)) {
+            const f = els[_focusIdx];
+            if (f && f.id === 'volMaster') {
+              const pct = Math.min(100, Math.max(0, Math.round(SoundManager._masterVolume * 100) + dir * 5));
+              _atualizarVolumeMaster(pct);
+              const s = document.getElementById('sliderMaster'); if (s) s.value = pct;
+              return;
+            }
+            if (f && f.id === 'volControl') {
+              const pct = Math.min(100, Math.max(0, Math.round(SoundManager._musicVolume * 100) + dir * 5));
+              _atualizarVolume(pct);
+              const s = document.getElementById('sliderVolume'); if (s) s.value = pct;
+              return;
+            }
+            if (f && f.id === 'volSfx') {
+              const pct = Math.min(100, Math.max(0, Math.round(SoundManager._sfxVolume * 100) + dir * 5));
+              _atualizarVolumeSfx(pct);
+              const s = document.getElementById('sliderSfx'); if (s) s.value = pct;
+              return;
+            }
+            // btnMutar: horizontal não faz nada
+          } else if (inD(_focusIdx)) {
+            const newIdx = _focusIdx + dir;
+            if (newIdx >= D_STA && newIdx < D_END) _focusIdx = newIdx;
+          }
+          atualizarFoco();
+          return;
+        }
+
+        // ── Vertical — sem wrap A→D nem D→A ──
+        if (inA(_focusIdx)) {
+          if (dir > 0) _focusIdx = volCount > 0 ? GS : (rodapeCount > 0 ? D_STA : _focusIdx);
+          // dir < 0: não wrapa para D
+        } else if (inG(_focusIdx)) {
+          if (dir > 0) {
+            if (_focusIdx + 1 < GE) _focusIdx++;
+            else if (rodapeCount > 0) _focusIdx = D_STA;
+          } else {
+            if (_focusIdx > GS) _focusIdx--;
+            else _focusIdx = A_END - 1;
+          }
+        } else if (inD(_focusIdx)) {
+          if (dir > 0) {
+            if (_focusIdx + 1 < D_END) _focusIdx++;
+            // Não wrapa para A
+          } else {
+            if (_focusIdx > D_STA) _focusIdx--;
+            else _focusIdx = volCount > 0 ? GE - 1 : A_END - 1;
+          }
+        }
+        atualizarFoco();
+        return;
+      }
+
+      // Tela inicial: grade 2×2 (Config|Fechar / Single|Multi) — clamped
+      if (_telaAtual === 'inicial') {
+        const COLS = 2;
+        const rows = Math.ceil(els.length / COLS);
+        const row  = Math.floor(_focusIdx / COLS);
+        const col  = _focusIdx % COLS;
+        if (horizontal) {
+          const newCol = Math.max(0, Math.min(COLS - 1, col + dir));
+          const newIdx = row * COLS + newCol;
+          if (newIdx < els.length) _focusIdx = newIdx;
+        } else {
+          const newRow = Math.max(0, Math.min(rows - 1, row + dir));
+          _focusIdx = Math.min(newRow * COLS + col, els.length - 1);
+        }
+        atualizarFoco();
+        return;
+      }
+
+      // Demais telas: flat clamped
+      const newIdx = _focusIdx + dir;
+      if (newIdx >= 0 && newIdx < els.length) _focusIdx = newIdx;
+      atualizarFoco();
+    }
+
+    // Simula clique no elemento focado — equivale ao Enter/Espaço do teclado.
+    function _menuGamepadConfirmar() {
+      if (_remapAtivo) return; // não confirma enquanto aguarda botão para remap
+      const els = obterElementosFocaveis();
+      if (els[_focusIdx]) els[_focusIdx].click();
+    }
+
+    // Atualiza o texto e a classe CSS de um slot de jogador no painelQR.
+    // id: 'slotP1' | 'slotP2' | conectado: true → verde, false → cinza.
+    function _atualizar_slot(id, texto, conectado) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = texto;
+      const classe = id === 'slotP1' ? 'p1' : 'p2';
+      el.className = `slot-jogador ${classe} ${conectado ? 'conectado' : 'aguardando'}`;
+    }
+
+    // ── Legendas de controle ──────────────────────────────
+
+    // Exibe a legenda de teclado do P1 (sempre) e do P2 (só em modo multi).
+    // Chamada pelo listener game:lutaIniciou.
+    function mostrarLegendas() {
+      document.getElementById('legendaP1').classList.add('visible');
+      if (_modo === 'multi') {
+        document.getElementById('legendaP2').classList.add('visible');
+      }
+    }
+
+    // Oculta as legendas de teclado dos dois jogadores.
+    // Chamada ao sair da luta: game:gameOver, game:telaInicial, _ativarModoViaBotao.
+    function esconderLegendas() {
+      document.getElementById('legendaP1').classList.remove('visible');
+      document.getElementById('legendaP2').classList.remove('visible');
+    }
+
+    // ── QR Code do placar ─────────────────────────────────
+
+    // Exibe o overlay de placar com o QR Code gerado pelo backend.
+    // Chamada 2.5s após game:gameOver (tempo da animação de GAME OVER no canvas).
+    // → Api.placarQR() → { qr_base64 } → exibe como data URI em #qrPlacarImg.
+    // Se offline ou API falhar, o overlay ainda aparece (sem a imagem QR).
+    async function mostrarQrPlacar() {
+      const overlay = document.getElementById('qrPlacarOverlay');
+      const img     = document.getElementById('qrPlacarImg');
+
+      try {
+        const res = await Api.placarQR();
+        if (res.ok && res.qr_base64) {
+          img.src = `data:image/png;base64,${res.qr_base64}`;
+        }
+      } catch (e) {
+        console.warn('[placar QR]', e);
+      }
+
+      overlay.classList.add('visible');
+      _telaAtual = 'qrPlacar';
+      _focusIdx  = 0;
+      atualizarFoco();
+      _iniciarPollGamepadMenu();
+    }
+
+    // Oculta o overlay de placar e para o poll de gamepad de menu.
+    // Chamada por voltarMenuPosPlacar() e _ativarModoViaBotao().
+    function esconderQrPlacar() {
+      document.getElementById('qrPlacarOverlay').classList.remove('visible');
+      _pararPollGamepadMenu();
+    }
+
+    // Fecha o QR do placar e dispara game:telaInicial para que game.js
+    // e o listener deste arquivo restaurem a tela inicial.
+    // Chamada pelo onclick de #btnPularPlacar.
+    function voltarMenuPosPlacar() {
+      esconderQrPlacar();
+      document.dispatchEvent(new CustomEvent('game:telaInicial'));
+    }
+
+    // ── Atalhos globais de gamepad: L2 = single, R2 = multi ──
+
+    // Monitora L2 (btn 7 = single) e R2 (btn 6 = multi) do P2 (gamepad índice 1) a cada 100ms.
+    // Usa setInterval em vez de RAF para não competir com o game loop na leitura
+    // de getGamepads() — dois callers RAF simultâneos causam sincronização dupla
+    // com a thread HID do USB, gerando micro-stutters visíveis nos sprites.
+    // 100ms é suficiente para resposta a botões de menu (não precisa de 60fps).
+    // P1 não tem botões de menu — só P2 possui L2/R2 (Controls.mappings[1].l2/r2).
+    // Borda de subida em L2 → _ativarModoViaBotao('single')
+    // Borda de subida em R2 → _ativarModoViaBotao('multi')
+    function _iniciarShortcutsGamepad() {
+      function poll() {
+        if (!navigator.getGamepads) return;
+        const pads = navigator.getGamepads();
+        // Apenas P2 (gamepad 1) tem botões de menu — lê índices do mapeamento atual
+        const pad = pads[1];
+        if (!pad || !pad.connected) { _shortcutPrev[1] = null; return; }
+
+        // Índices dinâmicos: respeitam remapeamento feito no painel de config
+        const l2Idx = Controls.mappings[1].l2;
+        const r2Idx = Controls.mappings[1].r2;
+
+        if (!_shortcutPrev[1]) {
+          _shortcutPrev[1] = {
+            l2: l2Idx >= 0 ? !!(pad.buttons[l2Idx] && pad.buttons[l2Idx].pressed) : false,
+            r2: r2Idx >= 0 ? !!(pad.buttons[r2Idx] && pad.buttons[r2Idx].pressed) : false
+          };
+          return;
+        }
+        const l2 = l2Idx >= 0 ? !!(pad.buttons[l2Idx] && pad.buttons[l2Idx].pressed) : false;
+        const r2 = r2Idx >= 0 ? !!(pad.buttons[r2Idx] && pad.buttons[r2Idx].pressed) : false;
+        if (l2 && !_shortcutPrev[1].l2) _ativarModoViaBotao('single');
+        if (r2 && !_shortcutPrev[1].r2) _ativarModoViaBotao('multi');
+        _shortcutPrev[1].l2 = l2;
+        _shortcutPrev[1].r2 = r2;
+      }
+      poll(); // leitura imediata para inicializar prev antes do primeiro tick
+      setInterval(poll, 100);
+    }
+
+    // Trata o pressionamento de L2/R2 conforme o estado atual do jogo.
+    //
+    // Na tela inicial (TELA_INICIAL ou estado vazio):
+    //   L2 → clicarSingle()   R2 → clicarMulti()
+    //   Controls.resetInput() é chamado antes para evitar que o input vaze para o SELECT.
+    //
+    // Durante qualquer outra tela (SELECT, FIGHTING, COUNTDOWN, ROUND_END, GAME_OVER):
+    //   Cancela a sala (Api.cancelarSala fire-and-forget) e volta ao menu principal.
+    //   Game.voltarInicio() é chamado para que game.js retorne ao estado TELA_INICIAL
+    //   e dispare o CustomEvent game:telaInicial, restaurando a UI.
+    //   O usuário então escolhe o modo manualmente — sem disparo automático de clicarSingle/Multi.
+    // Executa a saída efetiva da partida (limpeza completa → menu inicial).
+    function _executarSaida() {
+      SoundManager.play('menu');
+      _stopPolling();
+      if (_salaId) {
+        try { Api.cancelarSala(_salaId); } catch(e) {}
+        _salaId = null; _tokenP1 = null; _tokenP2 = null; _nickP1 = null; _nickP2 = null;
+      }
+      if (Game.retomar) Game.retomar();
+      Game.voltarInicio();
+      esconderQrPlacar();
+      esconder('painelQR');
+      esconder('painelDificuldade');
+      esconderLegendas();
+      esconderMsg();
+      document.getElementById('btnVoltar').classList.remove('visible');
+      Controls.resetInput();
+      mostrarBotoesInicio();
+    }
+
+    // Exibe o modal de confirmação de saída (offline e online, com título diferente).
+    function _mostrarConfirmacaoSaida() {
+      _pendenteSaida = true;
+
+      const titulo = document.getElementById('confirmTitulo');
+      const aviso  = document.getElementById('confirmAviso');
+      if (_modoOffline) {
+        if (titulo) titulo.textContent  = '⚠ Voltar ao menu?';
+        if (aviso)  aviso.style.display = 'none';
+      } else {
+        if (titulo) titulo.textContent  = '⚠ Abandonar a partida?';
+        if (aviso)  aviso.style.display = '';
+      }
+
+      document.getElementById('confirmSaida').classList.add('visible');
+      if (Game.pausar) Game.pausar();
+      _telaAtual = 'confirmSaida';
+      _focusIdx  = 1; // padrão: "Não, continuar" (mais seguro)
+      atualizarFoco();
+      _iniciarPollGamepadMenu();
+    }
+
+    // Jogador confirmou saída.
+    function _confirmarSaida() {
+      document.getElementById('confirmSaida').classList.remove('visible');
+      _pararPollGamepadMenu();
+      _pendenteSaida = false;
+      _executarSaida();
+    }
+
+    // Jogador cancelou — volta ao jogo.
+    function _cancelarSaida() {
+      document.getElementById('confirmSaida').classList.remove('visible');
+      _pararPollGamepadMenu();
+      _pendenteSaida = false;
+      if (Game.retomar) Game.retomar();
+      _telaAtual = 'jogando';
+    }
+
+    function _ativarModoViaBotao(modo) {
+      const estado    = Game.getState ? Game.getState() : '';
+      const naInicial = (estado === 'TELA_INICIAL' || estado === '');
+
+      if (naInicial) {
+        Controls.resetInput();
+        if (modo === 'single') clicarSingle(); else clicarMulti();
+        return;
+      }
+
+      // Durante partida ativa (offline ou online): pedir confirmação antes de sair
+      const partidaAtiva = (estado === 'FIGHTING' || estado === 'COUNTDOWN' ||
+                            estado === 'ROUND_END' || estado === 'SELECT');
+      if (partidaAtiva) {
+        _mostrarConfirmacaoSaida();
+        return;
+      }
+
+      // GAME_OVER: sair direto, sem confirmação
+      _executarSaida();
+    }
+
+    // ── Modo Offline ──────────────────────────────────────
+
+    // Exibe a notificação de "Sem internet" e seta _modoOffline = true.
+    // Chamada no boot quando Api.verificarConexao() retorna false.
+    // Inicia o poll de gamepad de menu com foco padrão em "Continuar offline" (índice 1).
+    function mostrarNotifOffline() {
+      _modoOffline = true;
+      document.getElementById('notifOffline').classList.add('visible');
+      _focusIdx = 1; // padrão: "Continuar offline"
+      atualizarFoco();
+      _iniciarPollGamepadMenu();
+    }
+
+    // Fecha a notificação offline e retorna o foco para a tela inicial.
+    // Chamada pelo onclick de #notifBtnContinuar.
+    // Para o poll de gamepad de menu (será reiniciado por mostrarBotoesInicio se necessário).
+    function continuarOffline() {
+      document.getElementById('notifOffline').classList.remove('visible');
+      _pararPollGamepadMenu();
+      _focusIdx = 0;
+      atualizarFoco();
+    }
+
+    // Reinicia o processo Electron via IPC.
+    function reiniciarApp() {
+      _pararPollGamepadMenu();
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.send('restart-app');
+    }
+
+    // Fecha o jogo completamente via IPC.
+    // main.js recebe 'close-app' → app.quit() encerra Electron.
+    // start.bat continua: mata o backend e fecha o próprio CMD.
+    function fecharJogo() {
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.send('close-app');
+    }
+
+    // ── Navegação por teclado no menu ─────────────────────
+
+    // Listener global de keydown registrado no boot.
+    // Só age quando o jogo não está em FIGHTING, SELECT, COUNTDOWN ou ROUND_END
+    // (esses estados usam inputs de controles.js, não de menu).
+    // Teclas de navegação: setas + WASD movem o foco; Enter/Espaço/K/Numpad2 confirmam.
+    // Chama obterElementosFocaveis() para descobrir o conjunto de botões da tela atual.
+    function tratarTeclaMenu(e) {
+      // O listener de remap em capture phase já tratou o evento antes de chegar aqui
+      if (_remapAtivo && _configInputMode === 'keyboard') return;
+      const estado = Game.getState ? Game.getState() : '';
+
+      // Atalhos l2/r2 verificados ANTES do early-return de estado de luta,
+      // pois precisam funcionar durante FIGHTING para abrir o modal de saída.
+      if (_telaAtual !== 'config' && !_pendenteSaida) {
+        const kms = [Controls.keymapP1, Controls.keymapP2];
+        for (const km of kms) {
+          if (km[e.code] === 'l2') { _ativarModoViaBotao('single'); e.preventDefault(); return; }
+          if (km[e.code] === 'r2') { _ativarModoViaBotao('multi');  e.preventDefault(); return; }
+        }
+      }
+
+      // Navegação de menu bloqueada durante luta, exceto quando um modal está aberto
+      if ((estado === 'FIGHTING' || estado === 'SELECT' ||
+           estado === 'COUNTDOWN' || estado === 'ROUND_END') && !_pendenteSaida) return;
+
+      const elementos = obterElementosFocaveis();
+      if (elementos.length === 0) return;
+
+      const ehEsq     = (e.code === 'ArrowLeft'  || e.code === 'KeyA');
+      const ehDir     = (e.code === 'ArrowRight' || e.code === 'KeyD');
+      const ehCima    = (e.code === 'ArrowUp'    || e.code === 'KeyW');
+      const ehBaixo   = (e.code === 'ArrowDown'  || e.code === 'KeyS');
+      const ehConfirma = (e.code === 'Space' || e.code === 'Enter' ||
+                          e.code === 'KeyK'  || e.code === 'Numpad2');
+
+      if (ehEsq || ehDir || ehCima || ehBaixo) {
+        // Scroll do container de créditos via teclado (cima/baixo)
+        if (_telaAtual === 'config' && _configTab === 'creditos') {
+          const credEl = document.getElementById('scrollCreditos');
+          if (credEl) {
+            if (ehCima)  credEl.scrollTop -= 40;
+            if (ehBaixo) credEl.scrollTop += 40;
+          }
+        }
+        if (ehEsq)   _menuGamepadNavegar(-1, true);
+        if (ehDir)   _menuGamepadNavegar(1,  true);
+        if (ehCima)  _menuGamepadNavegar(-1, false);
+        if (ehBaixo) _menuGamepadNavegar(1,  false);
+        e.preventDefault();
+        return;
+      }
+
+      if (ehConfirma) {
+        const alvo = elementos[_focusIdx];
+        if (alvo) alvo.click();
+        e.preventDefault();
+      }
+    }
+
+    // Retorna a lista de elementos focáveis da tela atual (em ordem de foco).
+    // Prioridade de overlays: notifOffline > qrPlacarOverlay > tela normal (_telaAtual).
+    // Telas normais:
+    //   'inicial'     → [btnSingle, btnMulti]
+    //   'dificuldade' → todos os .btn-dif em #painelDificuldade
+    //   'qr'          → [btnVoltar]
+    //   'jogando'     → [] (game loop controla os inputs)
+    function obterElementosFocaveis() {
+      // Overlays tem prioridade, independente de _telaAtual
+      if (document.getElementById('notifOffline').classList.contains('visible')) {
+        return [
+          document.getElementById('notifBtnReiniciar'),
+          document.getElementById('notifBtnContinuar')
+        ];
+      }
+      if (document.getElementById('confirmSaida').classList.contains('visible')) {
+        return [
+          document.getElementById('btnConfirmSim'),
+          document.getElementById('btnConfirmNao')
+        ].filter(Boolean);
+      }
+      if (document.getElementById('qrPlacarOverlay').classList.contains('visible')) {
+        return [document.getElementById('btnPularPlacar')];
+      }
+      if (_telaAtual === 'config') {
+        const tabBtns = Array.from(document.querySelectorAll('.config-tab-btn'));
+        const volEl   = _configTab === 'som'
+          ? [
+              document.getElementById('volMaster'),
+              document.getElementById('volControl'),
+              document.getElementById('volSfx'),
+              document.getElementById('btnMutar')
+            ].filter(Boolean)
+          : [];
+        const padraoBtn = document.getElementById('btnConfigPadrao');
+        const fecharBtn = document.getElementById('btnConfigFechar');
+        const rodape    = [padraoBtn, fecharBtn]
+          .filter(el => el && el.style.display !== 'none');
+        return [...tabBtns, ...volEl, ...rodape];
+      }
+      if (_telaAtual === 'inicial') {
+        // Grade 2×2: linha 0 = [Config, Fechar] | linha 1 = [Single, Multi]
+        return [
+          document.getElementById('btnConfig'),   // linha 0, col 0 (topo-esq)
+          document.getElementById('btnFechar'),   // linha 0, col 1 (topo-dir)
+          document.getElementById('btnSingle'),   // linha 1, col 0 (baixo-esq)
+          document.getElementById('btnMulti')    // linha 1, col 1 (baixo-dir)
+        ].filter(Boolean);
+      }
+      if (_telaAtual === 'dificuldade') {
+        return Array.from(document.querySelectorAll('#painelDificuldade .btn-dif'));
+      }
+      if (_telaAtual === 'qr') {
+        return [
+          document.getElementById('btnVoltar'),
+          document.getElementById('btnJogarSemLogin')
+        ].filter(Boolean);
+      }
+      return [];
+    }
+
+    // Aplica a classe CSS .focused ao elemento em _focusIdx da lista focável atual.
+    // Remove .focused de todos antes de aplicar, garantindo um único elemento focado.
+    // Também chama .focus() para compatibilidade com acessibilidade e CSS :focus.
+    function atualizarFoco() {
+      document.querySelectorAll('.focused').forEach(el => el.classList.remove('focused'));
+      const elementos = obterElementosFocaveis();
+      if (elementos[_focusIdx]) {
+        elementos[_focusIdx].classList.add('focused');
+        elementos[_focusIdx].focus({ preventScroll: true });
+      }
+    }
+
+    // ── Configuração de Controles ─────────────────────────
+
+    const ACOES_CONFIG = [
+      { id: 'up', label: 'Pulo',      emoji: '🟢' },
+      { id: 'b0', label: 'Ataque 1',  emoji: '🟡' },
+      { id: 'b1', label: 'Ataque 2',  emoji: '⚫' },
+      { id: 'b2', label: 'Bloquear',  emoji: '🔴' },
+      { id: 'b3', label: 'Especial',  emoji: '🔵' },
+    ];
+
+    const MAPEAMENTO_PADRAO = [
+      { up: 3, buttons: [0, 4, 1, 2, -1], l2: 5, r2: -1 },
+      { up: 3, buttons: [0, 1, 4, 2, -1], l2: -1, r2: 5 }
+    ];
+
+    let _remapAtivo             = null;  // { player, acao }
+    let _remapPollId            = null;  // setInterval ID (gamepad poll)
+    let _remapKeyListener       = null;  // keydown/mousedown listener (modo teclado)
+    let _remapWaitingForRelease = false; // espera todos os botões serem soltos
+    let _configTab              = 'som';
+    let _configInputMode        = 'gamepad'; // 'gamepad' | 'keyboard'
+
+    function abrirConfig() {
+      const el = document.getElementById('botoesInicio');
+      el.classList.add('hidden');
+      el.classList.remove('visible');
+      document.getElementById('btnConfig').classList.remove('visible');
+      document.getElementById('btnFechar').classList.remove('visible');
+      mostrar('painelConfig');
+      _telaAtual = 'config';
+      _cancelarRemap();
+      _focusIdx = 0; // foco na primeira aba
+      _mudarTab('som'); // renderiza conteúdo e atualiza foco
+      _iniciarPollGamepadMenu();
+    }
+
+    function fecharConfig() {
+      _cancelarRemap();
+      esconder('painelConfig');
+      mostrarBotoesInicio();
+    }
+
+    function _mudarTab(tab) {
+      _configTab = tab;
+      document.querySelectorAll('.config-tab-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.tab === tab));
+      document.getElementById('tabSom').style.display      = tab === 'som'      ? 'block' : 'none';
+      document.getElementById('tabCreditos').style.display = tab === 'creditos' ? 'block' : 'none';
+
+      // Botão PADRÃO: visível em Som, oculto em Créditos
+      const padraoBtn = document.getElementById('btnConfigPadrao');
+      if (padraoBtn) padraoBtn.style.display = tab === 'creditos' ? 'none' : '';
+
+      // Sincroniza sliders e botão mute com valores atuais ao abrir aba Som
+      if (tab === 'som') {
+        const masterPct = Math.round(SoundManager._masterVolume * 100);
+        const musicPct  = Math.round(SoundManager._musicVolume  * 100);
+        const sfxPct    = Math.round(SoundManager._sfxVolume    * 100);
+
+        const sM = document.getElementById('sliderMaster'); if (sM) sM.value = masterPct;
+        const lM = document.getElementById('lblMaster');    if (lM) lM.textContent = masterPct + '%';
+        const sV = document.getElementById('sliderVolume'); if (sV) sV.value = musicPct;
+        const lV = document.getElementById('lblVolume');    if (lV) lV.textContent = musicPct + '%';
+        const sS = document.getElementById('sliderSfx');    if (sS) sS.value = sfxPct;
+        const lS = document.getElementById('lblSfx');       if (lS) lS.textContent = sfxPct + '%';
+
+        const btnMutar = document.getElementById('btnMutar');
+        if (btnMutar) {
+          btnMutar.textContent = SoundManager._muted ? '🔊 DESMUTAR TUDO' : '🔇 MUTAR TUDO';
+          btnMutar.classList.toggle('muted', SoundManager._muted);
+        }
+      }
+
+      // Foca o botão da aba ativa
+      const tabOrder = ['som', 'creditos'];
+      _focusIdx = Math.max(0, tabOrder.indexOf(tab));
+      atualizarFoco();
+    }
+
+    function _lerValorMapeamento(player, acao) {
+      if (_configInputMode === 'keyboard') {
+        return _getKeyForAction(player, acao); // retorna e.code ou null (inclui l2/r2)
+      }
+      const m = Controls.mappings[player];
+      if (acao === 'up') return m.up;
+      if (acao === 'l2') return m.l2;
+      if (acao === 'r2') return m.r2;
+      if (acao.startsWith('b')) return m.buttons[parseInt(acao[1])];
+      return -1;
+    }
+
+    function _escreverValorMapeamento(player, acao, idx) {
+      const m = Controls.mappings[player];
+      if      (acao === 'up')        m.up                         = idx;
+      else if (acao === 'l2')        m.l2                         = idx;
+      else if (acao === 'r2')        m.r2                         = idx;
+      else if (acao.startsWith('b')) m.buttons[parseInt(acao[1])] = idx;
+    }
+
+    // Gera pares P1|P2 no #configGrid (DOM order interleaved para navegação em grade).
+    function _renderizarConfig() {
+      const grid = document.getElementById('configGrid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      function criarLinha(player, acao, label, emoji) {
+        const raw        = _lerValorMapeamento(player, acao);
+        const aguardando = _remapAtivo && _remapAtivo.player === player && _remapAtivo.acao === acao;
+        let displayVal;
+        if (aguardando)                          displayVal = _remapWaitingForRelease ? '...' : '🎯';
+        else if (raw === null || raw === undefined) displayVal = '—';
+        else if (typeof raw === 'string')          displayVal = _formatInputCode(raw);
+        else                                       displayVal = raw < 0 ? '—' : 'Btn ' + raw;
+        const btn     = document.createElement('button');
+        btn.className = 'config-linha' + (aguardando ? ' aguardando' : '');
+        btn.id        = `cfg-p${player}-${acao}`;
+        btn.onclick   = () => _remapSlot(player, acao);
+        btn.innerHTML =
+          `<span class="config-emoji">${emoji}</span>` +
+          `<span class="config-label">${label}</span>` +
+          `<span class="config-btn-idx">${displayVal}</span>`;
+        return btn;
+      }
+
+      // Atualiza dica conforme estado de remapeamento e modo ativo
+      const hint = document.getElementById('configHint');
+      if (hint) {
+        if (_remapAtivo && _remapWaitingForRelease) {
+          hint.textContent = '⏳ Solte todos os botões...';
+          hint.style.color = '#ff9800';
+        } else if (_remapAtivo && _configInputMode === 'keyboard') {
+          hint.textContent = '⌨ Pressione uma tecla ou botão do mouse...';
+          hint.style.color = '#ffd700';
+        } else if (_remapAtivo) {
+          hint.textContent = '🎮 Pressione o botão no gamepad...';
+          hint.style.color = '#ffd700';
+        } else if (_configInputMode === 'keyboard') {
+          hint.textContent = 'Clique num botão e pressione a tecla / botão do mouse';
+          hint.style.color = '#3a3a4a';
+        } else {
+          hint.textContent = 'Clique num botão e pressione o físico no gamepad para remapear';
+          hint.style.color = '#3a3a4a';
+        }
+      }
+
+      ACOES_CONFIG.forEach(a => {
+        const pair = document.createElement('div');
+        pair.className = 'config-pair';
+        pair.appendChild(criarLinha(0, a.id, a.label, a.emoji));
+        pair.appendChild(criarLinha(1, a.id, a.label, a.emoji));
+        grid.appendChild(pair);
+      });
+
+      const sep = document.createElement('div');
+      sep.className = 'config-sep-h';
+      grid.appendChild(sep);
+
+      if (_configInputMode === 'keyboard') {
+        // Teclado: P1 e P2 podem ter teclas diferentes para single/multi
+        const pS = document.createElement('div'); pS.className = 'config-pair';
+        pS.appendChild(criarLinha(0, 'l2', 'Singleplayer', '🕹'));
+        pS.appendChild(criarLinha(1, 'l2', 'Singleplayer', '🕹'));
+        grid.appendChild(pS);
+        const pM = document.createElement('div'); pM.className = 'config-pair';
+        pM.appendChild(criarLinha(0, 'r2', 'Multiplayer', '🕹'));
+        pM.appendChild(criarLinha(1, 'r2', 'Multiplayer', '🕹'));
+        grid.appendChild(pM);
+      } else {
+        // Gamepad: só P2 tem botões físicos de menu (L2/R2)
+        const menuPair = document.createElement('div');
+        menuPair.className = 'config-pair';
+        menuPair.appendChild(criarLinha(1, 'l2', 'Singleplayer', '🕹'));
+        menuPair.appendChild(criarLinha(1, 'r2', 'Multiplayer',  '🕹'));
+        grid.appendChild(menuPair);
+      }
+    }
+
+    // Modo Gamepad: aguarda todos os botões serem soltos, depois aceita qualquer botão.
+    // Modo Teclado: escuta o próximo keydown ou mousedown (capture phase).
+    function _remapSlot(player, acao) {
+      if (_remapAtivo && _remapAtivo.player === player && _remapAtivo.acao === acao) {
+        _cancelarRemap(); _renderizarConfig(); return;
+      }
+      _cancelarRemap();
+      _remapAtivo             = { player, acao };
+      _remapWaitingForRelease = _configInputMode === 'gamepad';
+      _renderizarConfig();
+
+      if (_configInputMode === 'keyboard') {
+        const onInput = (e) => {
+          e.preventDefault(); e.stopPropagation();
+          if (!_remapAtivo) return;
+          const { player: p, acao: a } = _remapAtivo;
+          let code;
+          if (e.type === 'mousedown') {
+            code = `Mouse${e.button}`;
+          } else {
+            // Ignora modificadores sozinhos
+            if (['ShiftLeft','ShiftRight','ControlLeft','ControlRight',
+                 'AltLeft','AltRight','MetaLeft','MetaRight'].includes(e.code)) return;
+            code = e.code;
+          }
+          _updateKeyForAction(p, a, code);
+          console.log(`[Config KB] ${p === 0 ? 'P1' : 'P2'} ${a} → ${code}`);
+          document.removeEventListener('keydown',   onInput, true);
+          document.removeEventListener('mousedown', onInput, true);
+          _remapKeyListener = null;
+          _cancelarRemap();
+          _renderizarConfig();
+          atualizarFoco();
+        };
+        _remapKeyListener = onInput;
+        document.addEventListener('keydown',   onInput, true);
+        document.addEventListener('mousedown', onInput, true);
+        return;
+      }
+
+      _remapPollId = setInterval(_pollRemap, 50);
+    }
+
+    function _pollRemap() {
+      if (!_remapAtivo || !navigator.getGamepads) return;
+      const { player, acao } = _remapAtivo;
+      const pads = navigator.getGamepads();
+
+      if (_remapWaitingForRelease) {
+        const algumPressionado = Array.from(pads)
+          .filter(p => p && p.connected)
+          .some(p => Array.from(p.buttons).some(b => b && b.pressed));
+        if (!algumPressionado) _remapWaitingForRelease = false;
+        return;
+      }
+
+      for (const pad of pads) {
+        if (!pad || !pad.connected) continue;
+        for (let i = 0; i < pad.buttons.length; i++) {
+          if (pad.buttons[i] && pad.buttons[i].pressed) {
+            _escreverValorMapeamento(player, acao, i);
+            console.log(`[Config GP] ${player === 0 ? 'P1' : 'P2'} ${acao} → Btn ${i}`);
+            _cancelarRemap();
+            _renderizarConfig();
+            atualizarFoco();
+            return;
+          }
+        }
+      }
+    }
+
+    function _cancelarRemap() {
+      if (_remapPollId) { clearInterval(_remapPollId); _remapPollId = null; }
+      if (_remapKeyListener) {
+        document.removeEventListener('keydown',   _remapKeyListener, true);
+        document.removeEventListener('mousedown', _remapKeyListener, true);
+        _remapKeyListener = null;
+      }
+      _remapAtivo             = null;
+      _remapWaitingForRelease = false;
+    }
+
+    // ── Modo de entrada (Gamepad / Teclado) ──────────────────
+
+    // Alterna entre detecção de gamepad e teclado no remapeamento.
+    function _setInputMode(mode) {
+      _configInputMode = mode;
+      document.querySelectorAll('.modo-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.modo === mode));
+      _cancelarRemap();
+      _renderizarConfig();
+    }
+
+    // Retorna o código de teclado atualmente mapeado para uma ação de um player.
+    function _getKeyForAction(player, acao) {
+      const keymap = player === 0 ? Controls.keymapP1 : Controls.keymapP2;
+      for (const [code, action] of Object.entries(keymap)) {
+        if (action === acao) return code;
+      }
+      return null;
+    }
+
+    // Remove o mapeamento antigo e adiciona o novo código para a ação.
+    function _updateKeyForAction(player, acao, newCode) {
+      const keymap = player === 0 ? Controls.keymapP1 : Controls.keymapP2;
+      for (const code of Object.keys(keymap)) {
+        if (keymap[code] === acao) { delete keymap[code]; break; }
+      }
+      if (newCode) keymap[newCode] = acao;
+    }
+
+    // Formata e.code / mousedown para exibição amigável.
+    function _formatInputCode(code) {
+      if (!code) return '—';
+      return code
+        .replace(/^Key/, '').replace(/^Digit/, '').replace(/^Numpad/, 'N')
+        .replace('ArrowLeft', '◄').replace('ArrowRight', '►')
+        .replace('ArrowUp', '▲').replace('ArrowDown', '▼')
+        .replace('Space', 'Esp').replace('Enter', '↵')
+        .replace('ShiftLeft', 'ShiftL').replace('ShiftRight', 'ShiftR')
+        .replace('ControlLeft', 'CtrlL').replace('ControlRight', 'CtrlR')
+        .replace('Mouse0', 'M.Esq').replace('Mouse1', 'M.Mid').replace('Mouse2', 'M.Dir');
+    }
+
+    // Reseta o submenu ativo: som → volumes padrão e desmuta.
+    function _resetarSubMenuAtual() {
+      if (_configTab === 'som') {
+        SoundManager.setMasterVolume(1.0);
+        const sM = document.getElementById('sliderMaster'); if (sM) sM.value = 100;
+        const lM = document.getElementById('lblMaster');    if (lM) lM.textContent = '100%';
+
+        SoundManager.setMusicVolume(0.35);
+        const sV = document.getElementById('sliderVolume'); if (sV) sV.value = 35;
+        const lV = document.getElementById('lblVolume');    if (lV) lV.textContent = '35%';
+
+        SoundManager.setSfxVolume(0.7);
+        const sS = document.getElementById('sliderSfx');    if (sS) sS.value = 70;
+        const lS = document.getElementById('lblSfx');       if (lS) lS.textContent = '70%';
+
+        SoundManager.setMuted(false);
+        const btnMutar = document.getElementById('btnMutar');
+        if (btnMutar) { btnMutar.textContent = '🔇 MUTAR TUDO'; btnMutar.classList.remove('muted'); }
+      }
+    }
+
+    function _atualizarVolumeMaster(val) {
+      const v = parseInt(val);
+      const lbl = document.getElementById('lblMaster');
+      if (lbl) lbl.textContent = v + '%';
+      SoundManager.setMasterVolume(v / 100);
+    }
+
+    // Atualiza volume da música em tempo real via slider.
+    function _atualizarVolume(val) {
+      const v = parseInt(val);
+      const lbl = document.getElementById('lblVolume');
+      if (lbl) lbl.textContent = v + '%';
+      SoundManager.setMusicVolume(v / 100);
+    }
+
+    // Atualiza volume dos personagens (SFX) em tempo real via slider.
+    function _atualizarVolumeSfx(val) {
+      const v = parseInt(val);
+      const lbl = document.getElementById('lblSfx');
+      if (lbl) lbl.textContent = v + '%';
+      SoundManager.setSfxVolume(v / 100);
+    }
+
+    // Alterna mute de todos os sons do jogo.
+    function _toggleMutar() {
+      const muted = !SoundManager._muted;
+      SoundManager.setMuted(muted);
+      const btn = document.getElementById('btnMutar');
+      if (btn) {
+        btn.textContent = muted ? '🔊 DESMUTAR TUDO' : '🔇 MUTAR TUDO';
+        btn.classList.toggle('muted', muted);
+      }
+    }
+
+    // ── Utils ─────────────────────────────────────────────
+
+    // Exibe/oculta um elemento pelo ID via display block/none.
+    function mostrar(id)  { const el = document.getElementById(id); if (el) el.style.display = 'block'; }
+    function esconder(id) { const el = document.getElementById(id); if (el) el.style.display = 'none'; }
+
+    // Exibe uma mensagem em #msgErro. tipo 'erro' usa vermelho e auto-oculta em 4s.
+    function mostrarMsg(txt, tipo) {
+      const el = document.getElementById('msgErro');
+      el.textContent = txt;
+      el.style.color   = tipo === 'erro' ? '#e94560' : '#aaa';
+      el.style.display = '';
+      if (tipo === 'erro') setTimeout(() => { el.style.display = 'none'; }, 4000);
+    }
+    function esconderMsg() { document.getElementById('msgErro').style.display = 'none'; }
+  </script>
+
+</body>
+</html>

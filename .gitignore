@@ -1,0 +1,23 @@
+# ── Ambiente Python ───────────────────────────────────────────────
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+backend/*.pyo
+backend/game.db
+
+# ── Segredos ──────────────────────────────────────────────────────
+backend/.env
+.env
+
+# ── Node / Electron ───────────────────────────────────────────────
+game/node_modules/
+game/dist/
+game/out/
+
+# ── Sistema ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.log
+
+.claude/
+
