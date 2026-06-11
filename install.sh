@@ -47,6 +47,12 @@ if ! command -v node &> /dev/null || ! command -v npm &> /dev/null; then
     echo -e "${YELLOW}Node.js ou npm não encontrados. Instalando versão 22.x LTS...${NC}"
     curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
     sudo apt-get install -y nodejs
+    
+    # Fallback de segurança: Se o npm ainda não estiver disponível, força a instalação separada
+    if ! command -v npm &> /dev/null; then
+        echo -e "${YELLOW}Forçando a instalação do pacote npm separadamente...${NC}"
+        sudo apt install -y npm
+    fi
 else
     echo -e "${GREEN}Node.js e npm já estão instalados.${NC}"
 fi
