@@ -8,35 +8,29 @@ class TelaInicialArcade:
     def __init__(self, root):
         self.root = root
         self.root.attributes('-fullscreen', True)
-        self.root.config(cursor="none") # Mantém o mouse invisível
+        self.root.config(cursor="none")
         
         self.bg_color = "#0d0d13"
         self.title_color = "#00f0ff"
         self.text_color = "#cdcdde"
         self.accent_color = "#ff007f"
         
-        self.root.configure(bg=self.bg_color)
+        # Trava para evitar que múltiplos jogos abram se o jogador apertar várias vezes
+        self.jogo_em_execucao = False 
         
-        # O evento <KeyPress> garante que QUALQUER botão da placa USB 
-        # (reconhecida como teclado) feche a tela e inicie o jogo.
+        self.root.configure(bg=self.bg_color)
         self.root.bind("<KeyPress>", self.iniciar_jogo)
         
         self.construir_interface()
-        
-        # Dispara o ping para o Render assim que a tela abre
         self.acordar_servidor_render()
 
     def acordar_servidor_render(self):
         def ping_render():
             try:
-                # Faz a requisição nativamente, sem precisar instalar a biblioteca requests
                 urllib.request.urlopen("https://arcade-fight-ifsp.onrender.com", timeout=30)
             except Exception:
-                # Falhas de rede ou timeout na resposta são ignorados silenciosamente
-                # O objetivo principal é apenas bater no endpoint para acordar a máquina.
                 pass
                 
-        # Roda em uma thread separada para não congelar as animações da tela inicial
         thread = threading.Thread(target=ping_render)
         thread.daemon = True
         thread.start()
@@ -76,21 +70,39 @@ class TelaInicialArcade:
         self.root.after(600, self.piscar_texto)
 
     def iniciar_jogo(self, event):
-        self.root.destroy()
+        # Se o jogo já estiver rodando, ignora qualquer novo botão apertado
+        if self.jogo_em_execucao:
+            return 
+            
+        self.jogo_em_execucao = True
+        self.lbl_start.config(text="CARREGANDO SISTEMA... AGUARDE")
         
-        # Pega o diretório exato de onde o script python está rodando
         diretorio_atual = os.path.dirname(os.path.abspath(__file__))
         caminho_script = os.path.join(diretorio_atual, "start_game.sh")
         
-        # Executa o script bash que você forneceu
         if os.path.exists(caminho_script):
-            subprocess.Popen(["bash", caminho_script])
+            # Inicia uma thread para rodar o script sem travar o loop do Tkinter
+            thread_jogo = threading.Thread(target=self.rodar_script_bash, args=(caminho_script,))
+            thread_jogo.daemon = True
+            thread_jogo.start()
         else:
             print(f"Erro: O arquivo não foi encontrado em {caminho_script}")
+            self.restaurar_tela()
+
+    def rodar_script_bash(self, caminho_script):
+        # subprocess.run pausa esta thread específica até que o script Bash finalize
+        # (O Bash finaliza apenas quando a janela do Electron é fechada)
+        subprocess.run(["bash", caminho_script])
+        
+        # Após o jogo ser fechado, instrui a thread principal (Tkinter) a restaurar a tela original
+        self.root.after(0, self.restaurar_tela)
+
+    def restaurar_tela(self):
+        self.jogo_em_execucao = False
+        self.lbl_start.config(text="PRESSIONE QUALQUER BOTAO PARA INICIAR JOGO")
 
 if __name__ == "__main__":
     app = tk.Tk()
     app.title("Projeto Arcade - Splash Screen")
     tela = TelaInicialArcade(app)
     app.mainloop()
-    
