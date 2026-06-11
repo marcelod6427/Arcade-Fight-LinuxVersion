@@ -161,21 +161,6 @@ chmod +x install.sh start.sh
 ./install.sh
 ```
 
-O script verificará e instalará automaticamente todas as dependências necessárias do sistema, incluindo:
-
-* curl
-* Python 3.12
-* python3-venv
-* Node.js
-* npm
-
-Além disso, ele:
-
-* criará o ambiente virtual do backend;
-* instalará todas as dependências Python;
-* instalará as dependências do frontend via npm;
-* preparará o ambiente completo para execução do jogo.
-
 ### 5. Iniciar o jogo
 
 Após a instalação, você poderá iniciar o Arcade Fight de duas formas:
@@ -193,23 +178,3 @@ Dentro da pasta do projeto, execute:
 ```
 
 ---
-
-## 🪟 Para Windows
-
-O projeto também pode ser executado em Windows utilizando os scripts equivalentes disponibilizados no repositório. Recomenda-se seguir as instruções específicas da versão Windows presentes na pasta do projeto.
-
----
-
-## Atualizações
-
-Para obter a versão mais recente do projeto:
-
-```bash
-git pull
-```
-
-Caso novas dependências tenham sido adicionadas, execute novamente:
-
-```bash
-./install.sh
-```
