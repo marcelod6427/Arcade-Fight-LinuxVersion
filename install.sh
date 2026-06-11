@@ -22,22 +22,25 @@ echo "Isso pode pedir sua senha de usuário (sudo)."
 # Atualiza repositórios básicos
 sudo apt update -y
 
-# Instala Python 3.12 e o pacote venv (necessário no Ubuntu/Debian)
+# Garante a instalação do Python 3.12 e do pacote venv
 if ! command -v python3.12 &> /dev/null; then
+    echo -e "${YELLOW}Python 3.12 não encontrado. Instalando...${NC}"
     sudo apt install -y software-properties-common
     sudo add-apt-repository -y ppa:deadsnakes/ppa
     sudo apt update -y
     sudo apt install -y python3.12 python3.12-venv
 else
-    echo -e "${GREEN}Python 3.12 já está instalado.${NC}"
+    echo -e "${GREEN}Python 3.12 já está instalado. Garantindo que o pacote venv também esteja...${NC}"
+    sudo apt install -y python3.12-venv
 fi
 
-# Instala Node.js (via NodeSource para pegar a versão LTS mais recente 22.x)
-if ! command -v node &> /dev/null; then
+# Garante a instalação do Node.js e do npm
+if ! command -v node &> /dev/null || ! command -v npm &> /dev/null; then
+    echo -e "${YELLOW}Node.js ou npm não encontrados. Instalando versão 22.x LTS...${NC}"
     curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
     sudo apt-get install -y nodejs
 else
-    echo -e "${GREEN}Node.js já está instalado.${NC}"
+    echo -e "${GREEN}Node.js e npm já estão instalados.${NC}"
 fi
 
 # ======================================================================
@@ -111,9 +114,8 @@ echo -e "${GREEN}Atalho criado!${NC}"
 echo -e "\n${GREEN}================================================${NC}"
 echo -e "${GREEN}       INSTALAÇÃO CONCLUÍDA COM SUCESSO!        ${NC}"
 echo -e "${GREEN}================================================${NC}\n"
+echo "Para jogar, utilize o atalho 'Arcade Fight' criado na sua"
+echo "Área de Trabalho, ou execute o arquivo start.sh no terminal."
+echo ""
 
-read -p "Deseja iniciar o jogo agora? (S/N): " INICIAR
-if [[ "$INICIAR" =~ ^[Ss]$ ]]; then
-    cd "$ROOT_DIR"
-    ./start.sh
-fi
+exit 0
