@@ -42,7 +42,7 @@ curl -s -o /dev/null --max-time 60 https://arcade-fight-ifsp.onrender.com &
 echo -e "\n${YELLOW}[1/2] Iniciando backend (FastAPI)...${NC}"
 cd "$ROOT_DIR/backend" || exit
 
-# Inicia o backend em background e salva o PID (Process ID)
+# Inicia o backend em background e salva o PID
 source venv/bin/activate
 python main.py &
 BACKEND_PID=$!
@@ -60,7 +60,6 @@ echo ""
 # Verificando servidor online
 TENTATIVA=1
 MAX_TENTATIVAS=5
-SERVIDOR_ONLINE=0
 
 while [ $TENTATIVA -le $MAX_TENTATIVAS ]; do
     echo "Verificando conexão com o servidor... (tentativa $TENTATIVA/$MAX_TENTATIVAS)"
@@ -70,7 +69,6 @@ while [ $TENTATIVA -le $MAX_TENTATIVAS ]; do
     
     if echo "$RESPOSTA" | grep -q "API rodando"; then
         echo -e "${GREEN}Servidor online! Iniciando o jogo...${NC}\n"
-        SERVIDOR_ONLINE=1
         break
     else
         if [ $TENTATIVA -eq $MAX_TENTATIVAS ]; then
@@ -87,7 +85,9 @@ echo "Para encerrar, feche a janela do jogo."
 echo -e "O backend será encerrado automaticamente.\n"
 
 cd "$ROOT_DIR/game" || exit
-npx electron .
+
+# CORREÇÃO: Passando a flag --no-sandbox para evitar crashes no Linux/VMs
+npx electron . --no-sandbox
 
 # ================================================
 # CLEANUP (Quando o jogo fechar)

@@ -14,13 +14,21 @@ echo -e "${GREEN}           ARCADE FIGHT | INSTALADOR LINUX      ${NC}"
 echo -e "${GREEN}================================================${NC}\n"
 
 # ======================================================================
-# [1/6] Dependências do Sistema (Python 3.12 e Node.js)
+# [1/6] Dependências do Sistema (curl, Python 3.12 e Node.js)
 # ======================================================================
 echo -e "${YELLOW}[1/6] Verificando e instalando dependências do sistema...${NC}"
 echo "Isso pode pedir sua senha de usuário (sudo)."
 
 # Atualiza repositórios básicos
 sudo apt update -y
+
+# Garante a instalação do curl (necessário para checagem do servidor e NodeSource)
+if ! command -v curl &> /dev/null; then
+    echo -e "${YELLOW}curl não encontrado. Instalando...${NC}"
+    sudo apt install -y curl
+else
+    echo -e "${GREEN}curl já está instalado.${NC}"
+fi
 
 # Garante a instalação do Python 3.12 e do pacote venv
 if ! command -v python3.12 &> /dev/null; then
