@@ -6,7 +6,7 @@
 
 ## O QUE É
 
-Arcade Fight é um jogo de luta 2D inspirado nos clássicos dos fliperamas dos anos 90. Dois jogadores escolhem entre cinco personagens únicos e se enfrentam em combates no melhor de dois rounds. O projeto foi desenvolvido para rodar em um gabinete arcade físico da instituição, mas funciona normalmente em qualquer computador com Windows.
+Arcade Fight é um jogo de luta 2D inspirado nos clássicos dos fliperamas dos anos 90. Dois jogadores escolhem entre cinco personagens únicos e se enfrentam em combates no melhor de dois rounds. O projeto foi desenvolvido para rodar em um gabinete arcade físico da instituição, mas funciona normalmente em qualquer computador com Windows ou distribuições Linux.
 
 ---
 
@@ -24,12 +24,12 @@ Arcade Fight é um jogo de luta 2D inspirado nos clássicos dos fliperamas dos a
 
 ## MECÂNICAS DE JOGO
 
-- **Sistema de rounds** — melhor de 2 rounds decide o vencedor
-- **Barra de especial** — carregada causando dano; usa o especial quando cheia
-- **Bloqueio** — reduz o dano recebido para 30%
-- **Counter** — janela de 300ms que reverte o golpe com 1,5× de dano para o atacante
-- **IA adaptativa** — três níveis: fácil, médio e difícil, com reações e agressividade diferentes
-- **Projéteis** — Mago dispara orbes independentes que percorrem o cenário
+* **Sistema de rounds** — melhor de 2 rounds decide o vencedor
+* **Barra de especial** — carregada causando dano; usa o especial quando cheia
+* **Bloqueio** — reduz o dano recebido para 30%
+* **Counter** — janela de 300ms que reverte o golpe com 1,5× de dano para o atacante
+* **IA adaptativa** — três níveis: fácil, médio e difícil, com reações e agressividade diferentes
+* **Projéteis** — Mago dispara orbes independentes que percorrem o cenário
 
 ---
 
@@ -75,9 +75,9 @@ Durante qualquer partida, pressionar os botões **Single Player** ou **Multi Pla
 
 Acessado pelo botão ⚙ no canto superior esquerdo da tela inicial. Possui três abas:
 
-- **Controles** — remapeamento interativo de todos os botões para gamepad ou teclado/mouse. Clique em um botão, pressione o físico desejado, o mapeamento é aplicado imediatamente.
-- **Som** — controle de volume das músicas e dos efeitos sonoros dos personagens (SFX), ambos de 0–100%. Valores salvos automaticamente entre sessões. Padrões: músicas 35%, SFX 45%.
-- **Créditos** — informações sobre o projeto, repositório e ferramentas utilizadas.
+* **Controles** — remapeamento interativo de todos os botões para gamepad ou teclado/mouse. Clique em um botão, pressione o físico desejado, o mapeamento é aplicado imediatamente.
+* **Som** — controle de volume das músicas e dos efeitos sonoros dos personagens (SFX), ambos de 0–100%. Valores salvos automaticamente entre sessões. Padrões: músicas 35%, SFX 45%.
+* **Créditos** — informações sobre o projeto, repositório e ferramentas utilizadas.
 
 Toda a navegação do menu de configurações suporta analógico do arcade e teclado (setas / WASD).
 
@@ -88,32 +88,32 @@ Toda a navegação do menu de configurações suporta analógico do arcade e tec
 O jogo possui duas camadas de áudio independentes:
 
 **Trilhas sonoras (SoundManager)**
-- Menu inicial, configurações e seleção de personagem: `menuInicial.mp3`
-- Durante a partida: `luta.mp3`
-- Game Over e tela de resultados: `fimDoJogo.mp3`
-- Transição suave com crossfade de 1,5 segundos entre as faixas
+* Menu inicial, configurações e seleção de personagem: `menuInicial.mp3`
+* Durante a partida: `luta.mp3`
+* Game Over e tela de resultados: `fimDoJogo.mp3`
+* Transição suave com crossfade de 1,5 segundos entre as faixas
 
 **Efeitos sonoros dos personagens (SFXManager)**
-- Cada personagem possui 5 efeitos: ataque 1, ataque 2, especial, dano recebido e morte
-- Tocam somente durante a partida, em canais independentes da trilha sonora
+* Cada personagem possui 5 efeitos: ataque 1, ataque 2, especial, dano recebido e morte
+* Tocam somente durante a partida, em canais independentes da trilha sonora
 
 ---
 
 ## TECNOLOGIAS UTILIZADAS
 
 **Desktop / Frontend**
-- Electron.js — empacotamento do aplicativo desktop
-- HTML5 Canvas — renderização do jogo em tempo real
-- JavaScript puro — lógica do jogo, física, IA, controles
-- Web Gamepad API — suporte a controles arcade físicos
+* Electron.js — empacotamento do aplicativo desktop
+* HTML5 Canvas — renderização do jogo em tempo real
+* JavaScript puro — lógica do jogo, física, IA, controles
+* Web Gamepad API — suporte a controles arcade físicos
 
 **Backend**
-- Python 3.12 + FastAPI — servidor de API REST
-- PostgreSQL — banco de dados de jogadores e resultados
-- Render.com — hospedagem do servidor e banco de dados
+* Python 3.12 + FastAPI — servidor de API REST
+* PostgreSQL — banco de dados de jogadores e resultados
+* Render.com — hospedagem do servidor e banco de dados
 
 **Mobile (páginas de login)**
-- HTML / CSS / JavaScript — acessadas via QR code pelo navegador do celular
+* HTML / CSS / JavaScript — acessadas via QR code pelo navegador do celular
 
 ---
 
@@ -127,30 +127,89 @@ O jogo possui duas camadas de áudio independentes:
 
 ---
 
-## INSTALAÇÃO
+# INSTALAÇÃO E EXECUÇÃO
 
-1. Baixe o repositório e extraia o `.zip`
-2. Execute o `install.bat` **como Administrador**
-3. O instalador verifica e instala automaticamente Python 3.12 e Node.js caso necessário
-4. Cria o ambiente virtual Python, instala dependências e cria atalho na Área de Trabalho
-5. Ao final, oferece a opção de abrir o jogo diretamente
+O projeto conta com scripts de automação que configuram o ambiente (Python, Node.js, ambiente virtual e dependências) e iniciam o jogo facilmente.
 
-Após instalado, use o atalho **"Arcade Fight"** na Área de Trabalho ou execute `start.bat`.
+## Para Linux (Ubuntu / Mint / Pop!_OS)
 
-> O servidor online pode demorar alguns segundos para inicializar. O `start.bat` tenta conexão por até 4 tentativas antes de entrar automaticamente em modo offline.
+### 1. Instale o Git
+
+Caso ainda não tenha o Git instalado no sistema:
+
+```bash
+sudo apt update
+sudo apt install git -y
+```
+
+### 2. Baixe o repositório
+
+```bash
+git clone https://github.com/marcelod6427/Arcade-Fight-LinuxVersion.git
+cd Arcade-Fight-IFSP
+```
+
+### 3. Dê permissão de execução aos scripts
+
+```bash
+chmod +x install.sh start.sh
+```
+
+### 4. Execute o instalador
+
+```bash
+./install.sh
+```
+
+O script verificará e instalará automaticamente todas as dependências necessárias do sistema, incluindo:
+
+* curl
+* Python 3.12
+* python3-venv
+* Node.js
+* npm
+
+Além disso, ele:
+
+* criará o ambiente virtual do backend;
+* instalará todas as dependências Python;
+* instalará as dependências do frontend via npm;
+* preparará o ambiente completo para execução do jogo.
+
+### 5. Iniciar o jogo
+
+Após a instalação, você poderá iniciar o Arcade Fight de duas formas:
+
+**Opção 1 — Atalho na Área de Trabalho**
+
+Utilize o atalho **Arcade Fight** criado automaticamente na Área de Trabalho.
+
+**Opção 2 — Terminal**
+
+Dentro da pasta do projeto, execute:
+
+```bash
+./start.sh
+```
 
 ---
 
-## DEPLOY DO SERVIDOR
+## 🪟 Para Windows
 
-O servidor está hospedado no **Render.com** com deploy automático a cada push na branch `main`. O banco de dados PostgreSQL utiliza o plano gratuito da mesma plataforma.
-
-URL do servidor: `https://arcade-fight-ifsp.onrender.com`
+O projeto também pode ser executado em Windows utilizando os scripts equivalentes disponibilizados no repositório. Recomenda-se seguir as instruções específicas da versão Windows presentes na pasta do projeto.
 
 ---
 
-## DESENVOLVIDO POR
+## Atualizações
 
-**Marcelo L. G. Filho** — Projeto Integrador Técnico — IFSP
+Para obter a versão mais recente do projeto:
 
-Repositório: [github.com/marcelod6427/Arcade-Fight-IFSP](https://github.com/marcelod6427/Arcade-Fight-IFSP)
+```bash
+git pull
+```
+
+Caso novas dependências tenham sido adicionadas, execute novamente:
+
+```bash
+./install.sh
+```
