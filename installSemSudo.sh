@@ -9,20 +9,29 @@ NC='\033[0m' # Sem cor
 ROOT_DIR=$(dirname "$(readlink -f "$0")")
 cd "$ROOT_DIR"
 
+# ======================================================================
+# VERIFICAÇÃO DE PERMISSÃO (Necessária para o uso do apt)
+# ======================================================================
+if [ "$EUID" -ne 0 ]; then
+    echo -e "${RED}[ERRO] Este instalador precisa de privilégios de administrador para instalar as dependências do sistema.${NC}"
+    echo "Por favor, execute o script utilizando o sudo:"
+    echo -e "${YELLOW}sudo ./install.sh${NC}"
+    exit 1
+fi
+
 echo -e "${GREEN}================================================${NC}"
 echo -e "${GREEN}           ARCADE FIGHT | INSTALADOR LINUX      ${NC}"
 echo -e "${GREEN}================================================${NC}\n"
 
 # ======================================================================
-# [1/6] Dependências do Sistema (curl, Python 3.12 e Node.js)
+# [1/6] Dependências do Sistema (curl, Python e Node.js)
 # ======================================================================
 echo -e "${YELLOW}[1/6] Verificando e instalando dependências do sistema...${NC}"
-echo "Isso pode pedir sua senha de usuário (sudo)."
 
 # Atualiza repositórios básicos
 apt update -y
 
-# Garante a instalação do curl (necessário para checagem do servidor e NodeSource)
+# Garante a instalação do curl
 if ! command -v curl &> /dev/null; then
     echo -e "${YELLOW}curl não encontrado. Instalando...${NC}"
     apt install -y curl
@@ -30,25 +39,38 @@ else
     echo -e "${GREEN}curl já está instalado.${NC}"
 fi
 
-# Garante a instalação do Python 3.12 e do pacote venv
-if ! command -v python3.12 &> /dev/null; then
-    echo -e "${YELLOW}Python 3.12 não encontrado. Instalando...${NC}"
-    apt install -y software-properties-common
-    add-apt-repository -y ppa:deadsnakes/ppa
-    apt update -y
-    apt install -y python3.12 python3.12-venv
+# Garante a instalação do Python e do pacote venv de forma compatível (Ubuntu vs Debian/Slax)
+PYTHON_CMD="python3"
+
+if ! command -v python3 &> /dev/null; then
+    echo -e "${YELLOW}Python não encontrado. Instalando...${NC}"
+    # Se possuir add-apt-repository, assume que é Ubuntu e tenta o 3.12
+    if command -v add-apt-repository &> /dev/null; then
+        apt install -y software-properties-common
+        add-apt-repository -y ppa:deadsnakes/ppa
+        apt update -y
+        apt install -y python3.12 python3.12-venv
+        PYTHON_CMD="python3.12"
+    else
+        # Caso contrário (Debian/Slax), instala a versão padrão estável do sistema
+        apt install -y python3 python3-venv
+        PYTHON_CMD="python3"
+    fi
 else
-    echo -e "${GREEN}Python 3.12 já está instalado. Garantindo que o pacote venv também esteja...${NC}"
-    apt install -y python3.12-venv
+    # Se o Python já existe, detecta qual versão usar
+    if command -v python3.12 &> /dev/null; then
+        PYTHON_CMD="python3.12"
+    fi
+    echo -e "${GREEN}Python ($PYTHON_CMD) já está instalado. Garantindo o pacote venv...${NC}"
+    apt install -y ${PYTHON_CMD}-venv 2>/dev/null || apt install -y python3-venv
 fi
 
 # Garante a instalação do Node.js e do npm
 if ! command -v node &> /dev/null || ! command -v npm &> /dev/null; then
     echo -e "${YELLOW}Node.js ou npm não encontrados. Instalando versão 22.x LTS...${NC}"
-    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
     apt-get install -y nodejs
     
-    # Fallback de segurança: Se o npm ainda não estiver disponível, força a instalação separada
     if ! command -v npm &> /dev/null; then
         echo -e "${YELLOW}Forçando a instalação do pacote npm separadamente...${NC}"
         apt install -y npm
@@ -68,8 +90,8 @@ if [ -d "venv" ]; then
     rm -rf venv
 fi
 
-echo "Criando novo ambiente virtual..."
-python3.12 -m venv venv || { echo -e "${RED}[ERRO] Falha ao criar venv.${NC}"; exit 1; }
+echo "Criando novo ambiente virtual usando $PYTHON_CMD..."
+$PYTHON_CMD -m venv venv || { echo -e "${RED}[ERRO] Falha ao criar venv.${NC}"; exit 1; }
 echo -e "${GREEN}Ambiente virtual criado!${NC}"
 
 # ======================================================================
@@ -98,7 +120,6 @@ echo -e "${GREEN}Dependências do jogo instaladas!${NC}"
 echo -e "\n${YELLOW}[5/6] Criando atalho na Área de Trabalho...${NC}"
 
 DESKTOP_FILE="$HOME/Desktop/Arcade_Fight.desktop"
-# Tradução de Desktop em sistemas PT-BR
 if [ -d "$HOME/Área de Trabalho" ]; then
     DESKTOP_FILE="$HOME/Área de Trabalho/Arcade_Fight.desktop"
 fi
@@ -116,7 +137,6 @@ Categories=Game;
 EOF
 
 chmod +x "$DESKTOP_FILE"
-# Dá permissão de execução aos scripts .sh
 chmod +x "$ROOT_DIR/start.sh"
 chmod +x "$ROOT_DIR/install.sh"
 

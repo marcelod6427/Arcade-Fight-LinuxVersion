@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  # SERVIÇO DO BANCO DE DADOS POSTGRESQL
+  db:
+    image: postgres:15
+    container_name: arcade_db
+    restart: always
+    environment:
+      POSTGRES_USER: arcade_admin
+      POSTGRES_PASSWORD: senha_segura_ifsp
+      POSTGRES_DB: arcade_fight
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  # SERVIÇO DA API (FASTAPI)
+  api:
+    build: 
+      context: ./backend
+    container_name: arcade_api
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://arcade_admin:senha_segura_ifsp@db:5432/arcade_fight
+      # Lembre-se de trocar o X.X pelo IP real da máquina no fliperama
+      - APP_URL=http://192.168.X.X:8000 
+    depends_on:
+      - db
+
+volumes:
+  pgdata:

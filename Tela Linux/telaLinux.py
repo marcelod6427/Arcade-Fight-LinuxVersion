@@ -1,6 +1,5 @@
 import tkinter as tk
 import threading
-import urllib.request
 import subprocess
 import os
 
@@ -22,18 +21,9 @@ class TelaInicialArcade:
         self.root.bind("<KeyPress>", self.iniciar_jogo)
         
         self.construir_interface()
-        self.acordar_servidor_render()
-
-    def acordar_servidor_render(self):
-        def ping_render():
-            try:
-                urllib.request.urlopen("https://arcade-fight-ifsp.onrender.com", timeout=30)
-            except Exception:
-                pass
-                
-        thread = threading.Thread(target=ping_render)
-        thread.daemon = True
-        thread.start()
+        
+        # A função acordar_servidor_render foi removida, 
+        # pois o servidor local via Docker não dorme e liga instantaneamente.
 
     def construir_interface(self):
         container = tk.Frame(self.root, bg=self.bg_color)
@@ -90,8 +80,9 @@ class TelaInicialArcade:
             self.restaurar_tela()
 
     def rodar_script_bash(self, caminho_script):
-        # subprocess.run pausa esta thread específica até que o script Bash finalize
-        # (O Bash finaliza apenas quando a janela do Electron é fechada)
+        # Mantemos o Tkinter em tela cheia no fundo de propósito.
+        # O bash vai chamar o Electron, e o Electron vai abrir por cima cobrindo tudo.
+        # Assim o usuário nunca vê a área de trabalho do sistema operacional!
         subprocess.run(["bash", caminho_script])
         
         # Após o jogo ser fechado, instrui a thread principal (Tkinter) a restaurar a tela original

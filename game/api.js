@@ -25,7 +25,7 @@
 // =============================================================================
 
 // URLs possíveis do backend.
-const ONLINE_URL  = 'https://arcade-fight-ifsp.onrender.com';
+const ONLINE_URL  = 'http://localhost:8000';
 const OFFLINE_URL = 'http://localhost:8000';
 
 // Começa apontando para o servidor online; verificarConexao() corrige para
