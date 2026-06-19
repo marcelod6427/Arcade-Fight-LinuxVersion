@@ -222,10 +222,20 @@
 </div>
 
 <script>
+  // =============================================================================
+  // login.html (Mobile Script) — Fluxo de cadastro/login e associação à sala
+  //
+  // Responsabilidades:
+  //   1. Obter 'sala' (ID) e 'modo' (single/multi) da URL via query parameters.
+  //   2. Realizar chamadas HTTP de Cadastro (/auth/cadastro) e Login (/auth/login).
+  //   3. Salvar o token JWT gerado e associar o jogador à sala (/sala/{id}/entrar).
+  //   4. Exibir o status final indicando se o jogador é Player 1 ou Player 2.
+  // =============================================================================
+
   const params = new URLSearchParams(window.location.search);
   const salaId = params.get('sala');
   const modo   = params.get('modo');
-  const API    = window.location.origin;
+  const API    = window.location.origin; // O site é servido pelo próprio backend FastAPI
 
   const infoEl = document.getElementById('salaInfo');
   if (salaId) {

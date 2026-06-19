@@ -24,7 +24,7 @@ Arcade Fight é um jogo de luta 2D inspirado nos clássicos dos fliperamas dos a
 
 ## MECÂNICAS DE JOGO
 
-* **Sistema de rounds** — melhor de 2 rounds decide o vencedor
+* **Sistema de rounds** — melhor de 3 rounds (Best of 3) decide o vencedor (primeiro a vencer 2 rounds)
 * **Barra de especial** — carregada causando dano; usa o especial quando cheia
 * **Bloqueio** — reduz o dano recebido para 30%
 * **Counter** — janela de 300ms que reverte o golpe com 1,5× de dano para o atacante
@@ -73,13 +73,12 @@ Durante qualquer partida, pressionar os botões **Single Player** ou **Multi Pla
 
 ## MENU DE CONFIGURAÇÕES
 
-Acessado pelo botão ⚙ no canto superior esquerdo da tela inicial. Possui três abas:
+Acessado pelo botão ⚙ no canto superior esquerdo da tela inicial. Possui duas abas:
 
-* **Controles** — remapeamento interativo de todos os botões para gamepad ou teclado/mouse. Clique em um botão, pressione o físico desejado, o mapeamento é aplicado imediatamente.
-* **Som** — controle de volume das músicas e dos efeitos sonoros dos personagens (SFX), ambos de 0–100%. Valores salvos automaticamente entre sessões. Padrões: músicas 35%, SFX 45%.
-* **Créditos** — informações sobre o projeto, repositório e ferramentas utilizadas.
+* **Som** — controle independente de volume para o Volume Geral (Master), trilhas sonoras (músicas) e efeitos sonoros dos personagens (SFX), com valores de 0–100% salvos automaticamente entre sessões. Também conta com um botão rápido para mutar todo o áudio.
+* **Créditos** — informações sobre a equipe de desenvolvimento do projeto, repositório de código, ferramentas de IA e recursos de áudio e aprendizado utilizados.
 
-Toda a navegação do menu de configurações suporta analógico do arcade e teclado (setas / WASD).
+Toda a navegação do menu de configurações suporta reações via teclado e controles arcade.
 
 ---
 
@@ -127,35 +126,46 @@ O jogo possui duas camadas de áudio independentes:
 
 ---
 
-# INSTALAÇÃO E EXECUÇÃO
+# INSTALAÇÃO E EXECUÇÃO (LINUX)
 
-O projeto conta com scripts de automação que configuram o ambiente (Python, Node.js, ambiente virtual e dependências) e iniciam o jogo facilmente.
+O projeto conta com scripts de automação que configuram todo o ambiente local (instalando Node.js, NPM, dependências do Electron, Tkinter para a interface Python e Podman/Podman-Compose para subir os serviços locais de banco de dados e API).
 
-## Para Linux (Ubuntu / Mint / Pop!_OS)
+## Requisitos Prévios
 
-### 1. Instale o Git
+1. Sistema operacional Linux baseado em Debian (Ubuntu, Linux Mint, Pop!_OS, etc.).
+2. Acesso de administrador (`sudo`).
 
-Caso ainda não tenha o Git instalado no sistema:
+## Passo a Passo
+
+### 1. Instalar o Git
+
+Caso ainda não tenha o Git instalado no sistema, execute:
 
 ```bash
 sudo apt update
 sudo apt install git -y
 ```
 
-### 2. Baixe o repositório
+### 2. Baixar o repositório
+
+Clone o repositório e acesse a pasta do projeto:
 
 ```bash
 git clone https://github.com/marcelod6427/Arcade-Fight-LinuxVersion.git
-cd Arcade-Fight-IFSP
+cd Arcade-Fight-LinuxVersion
 ```
 
-### 3. Dê permissão de execução aos scripts
+### 3. Conceder permissão de execução aos scripts
+
+Para garantir que todos os scripts rodem sem problemas de permissão:
 
 ```bash
-chmod +x install.sh start.sh
+chmod +x install.sh start.sh "Tela Linux/start_game.sh" "Tela Linux/telaLinux.py"
 ```
 
-### 4. Execute o instalador
+### 4. Executar o instalador
+
+Rode o script de instalação para preparar o ambiente. Ele instalará as dependências do sistema e do Node.js, além de subir o banco de dados e o servidor local FastAPI em segundo plano via Podman/Docker:
 
 ```bash
 ./install.sh
@@ -163,18 +173,18 @@ chmod +x install.sh start.sh
 
 ### 5. Iniciar o jogo
 
-Após a instalação, você poderá iniciar o Arcade Fight de duas formas:
+Você pode iniciar o Arcade Fight de duas formas:
 
-**Opção 1 — Atalho na Área de Trabalho**
+**Opção 1 — Execução Manual (via Terminal)**
 
-Utilize o atalho **Arcade Fight** criado automaticamente na Área de Trabalho.
-
-**Opção 2 — Terminal**
-
-Dentro da pasta do projeto, execute:
+A partir da raiz do projeto, execute o script principal:
 
 ```bash
 ./start.sh
 ```
+
+**Opção 2 — Inicialização Automática (Autostart no Boot)**
+
+Para gabinetes arcade físicos onde o jogo deve iniciar automaticamente em tela cheia logo após o login do sistema, consulte o passo a passo completo no arquivo [Guia Inicialização Arcade.pdf](file:///C:/Users/marcelo/Desktop/Arcade-Fight-LinuxVersion/Guia%20Inicialização%20Arcade.pdf) incluído no repositório.
 
 ---

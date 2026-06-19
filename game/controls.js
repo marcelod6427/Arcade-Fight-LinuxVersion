@@ -1,36 +1,66 @@
 // =============================================================================
 // controls.js — Sistema unificado de input: teclado + gamepad
+//
+// Responsabilidades:
+//   1. Capturar eventos de teclado de forma assíncrona (listeners Globais).
+//   2. Ler o estado dos gamepads conectados via Web Gamepad API a cada frame.
+//   3. Mapear botões físicos (gamepad e teclado) para ações lógicas abstratas:
+//      'left', 'right', 'up', 'down', 'jump', e botões de ação 'b0' a 'b4'.
+//   4. Manter o estado do input atual (state) e do frame anterior (prev) para
+//      permitir a detecção de cliques únicos (justPressed).
+//   5. Disparar eventos customizados para navegação de menu (L2 / R2 para voltar/sair).
 // =============================================================================
 
 const DEBUG_GAMEPAD = false;
 
 const Controls = {
+  // Estado atual dos inputs de ambos os jogadores (0 = P1, 1 = P2)
   state: [
     { left: false, right: false, up: false, down: false, jump: false, btn: [false, false, false, false, false] },
     { left: false, right: false, up: false, down: false, jump: false, btn: [false, false, false, false, false] }
   ],
+  // Estado dos inputs no frame anterior (útil para detectar clique inicial)
   prev: [
     { left: false, right: false, up: false, down: false, jump: false, btn: [false, false, false, false, false] },
     { left: false, right: false, up: false, down: false, jump: false, btn: [false, false, false, false, false] }
   ],
+  // Mapeamento físico dos controles Arcade (Web Gamepad API):
+  //   up: índice do botão de pulo (verde)
+  //   buttons: índices dos botões físicos correspondentes às ações lógicas [b0, b1, b2, b3, b4]
+  //   l2, r2: botões de controle de menu/atalhos
+  //   axes: índices dos eixos horizontal e vertical do joystick analógico
+  //   deadzone: limite de sensibilidade do analógico para evitar drift
   mappings: [
     { up: 3, buttons: [0, 4, 1, 2, -1], l2: 5, r2: -1, axes: [0,1], deadzone: 0.3 },
     { up: 3, buttons: [0, 1, 4, 2, -1], l2: -1, r2: 5, axes: [0,1], deadzone: 0.3 }
   ],
+  // Estado anterior dos botões L2/R2 para evitar múltiplos disparos rápidos em menus
   _menuPrev: [ { l2: false, r2: false }, { l2: false, r2: false } ],
 
+  // Mapeamento padrão do Teclado para o Player 1 (Teclas WASD + J/K/L/I/U)
   keymapP1: {
     'KeyA':  'left', 'KeyD':  'right', 'KeyW':  'up', 'KeyS':  'down',
-    'Space': 'jump', // Pulo virou 'jump' (teclado e botão verde)
-    'KeyJ':  'b0', 'KeyK':  'b1', 'KeyL':  'b2', 'KeyI':  'b3', 'KeyU':  'b4',
-    'F1':    'l2', 'F2':    'r2'
+    'Space': 'jump', // Pulo (Botão Verde ou Barra de Espaço)
+    'KeyJ':  'b0',   // Ataque Rápido (Botão Amarelo)
+    'KeyK':  'b1',   // Ataque Forte (Botão Preto)
+    'KeyL':  'b2',   // Bloquear (Botão Vermelho)
+    'KeyI':  'b3',   // Especial (Botão Azul)
+    'KeyU':  'b4',   // Janela de Counter
+    'F1':    'l2',   // Atalho para voltar ao menu
+    'F2':    'r2'
   },
 
+  // Mapeamento padrão do Teclado para o Player 2 (Setas direcionais + Numpad)
   keymapP2: {
     'ArrowLeft': 'left', 'ArrowRight': 'right', 'ArrowUp': 'up', 'ArrowDown': 'down',
-    'Numpad0':   'jump', // Pulo pro P2 no teclado
-    'Numpad1':   'b0', 'Numpad2': 'b1', 'Numpad3': 'b2', 'Numpad5': 'b3', 'Numpad4': 'b4',
-    'F3':        'l2', 'F4':      'r2'
+    'Numpad0':   'jump', // Pulo P2
+    'Numpad1':   'b0',   // Ataque Rápido P2
+    'Numpad2':   'b1',   // Ataque Forte P2
+    'Numpad3':   'b2',   // Bloquear P2
+    'Numpad5':   'b3',   // Especial P2
+    'Numpad4':   'b4',   // Janela de Counter P2
+    'F3':        'l2',   // Atalho para voltar ao menu P2
+    'F4':        'r2'
   },
 
   _keysDown: new Set(),

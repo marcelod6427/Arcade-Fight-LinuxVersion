@@ -127,6 +127,15 @@
 </div>
 
 <script>
+  // =============================================================================
+  // placar.html (Mobile Script) — Exibição do ranking geral de jogadores (Leaderboard)
+  //
+  // Responsabilidades:
+  //   1. Buscar o ranking Top 20 de jogadores (/placar) via polling a cada 10s.
+  //   2. Renderizar os cards dos jogadores com suas posições, vitórias e pontuações.
+  //   3. Destacar com medalhas visuais os 3 melhores classificados do ranking.
+  // =============================================================================
+
   const API = window.location.origin;
   const medalhas = ['🥇', '🥈', '🥉'];
 

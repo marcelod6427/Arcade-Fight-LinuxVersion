@@ -39,7 +39,7 @@ ipcMain.on('restart-app', () => {
 });
 
 // Fecha o jogo completamente (botão "Fechar Jogo").
-// app.quit() encerra o Electron; start.bat continua, mata o backend e fecha o CMD.
+// app.quit() encerra o Electron; o start_game.sh termina e o telaLinux.py retoma o controle.
 ipcMain.on('close-app', () => {
   app.quit();
 });
