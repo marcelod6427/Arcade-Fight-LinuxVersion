@@ -20,7 +20,7 @@ def gerar_qr_base64(url: str) -> str:
     """Gera um QR Code PNG a partir de uma URL e retorna como string base64.
 
     Parâmetros:
-        url: URL completa a ser codificada no QR (ex: https://dominio/site/login.html?sala=ABC)
+        url: URL completa a ser codificada no QR (ex: https://arcade.tmsi.paideiah.com.br/sala/criar)
 
     Retorno:
         String base64 da imagem PNG sem prefixo data URI.

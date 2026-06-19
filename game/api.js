@@ -14,7 +14,7 @@
 //   não pelo jogo Electron — portanto não estão aqui.
 //
 // URL base (resolvida em tempo de execução por verificarConexao()):
-//   Online  → https://arcade-fight-ifsp.onrender.com (servidor Render acessível)
+//   Online  →  (servidor Paulo Evaristo)
 //   Offline → http://localhost:8000 (FastAPI rodando localmente)
 //
 // Todas as funções retornam um objeto com { ok: true, ...dados }
@@ -25,7 +25,8 @@
 // =============================================================================
 
 // URLs possíveis do backend.
-const ONLINE_URL  = 'http://localhost:8000';
+// Ele lê a variável APP_URL injetada pelo Linux/Bash. Se não existir, usa localhost.
+const ONLINE_URL  = process.env.APP_URL || 'http://localhost:8000';
 const OFFLINE_URL = 'http://localhost:8000';
 
 // Começa apontando para o servidor online; verificarConexao() corrige para

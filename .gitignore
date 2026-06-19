@@ -6,7 +6,6 @@ backend/*.pyo
 backend/game.db
 
 # ── Segredos ──────────────────────────────────────────────────────
-backend/.env
 .env
 
 # ── Node / Electron ───────────────────────────────────────────────
@@ -21,3 +20,4 @@ Thumbs.db
 
 .claude/
 
+*.code-workspace

@@ -3,15 +3,13 @@ version: '3.8'
 services:
   # SERVIÇO DO BANCO DE DADOS POSTGRESQL
   db:
-    image: postgres:15
+    image: docker.io/library/postgres:15
     container_name: arcade_db
     restart: always
     environment:
-      POSTGRES_USER: arcade_admin
-      POSTGRES_PASSWORD: senha_segura_ifsp
-      POSTGRES_DB: arcade_fight
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-arcade_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-senha_segura_ifsp}
+      POSTGRES_DB: ${POSTGRES_DB:-arcade_fight}
     volumes:
       - pgdata:/var/lib/postgresql/data
 
@@ -22,11 +20,11 @@ services:
     container_name: arcade_api
     restart: always
     ports:
-      - "8000:8000"
+      - "8000:80"
     environment:
-      - DATABASE_URL=postgresql://arcade_admin:senha_segura_ifsp@db:5432/arcade_fight
+      - DATABASE_URL= ${DATABASE_URL:-postgresql://arcade_admin:senha_segura_ifsp@db:5432/arcade_fight}
       # Lembre-se de trocar o X.X pelo IP real da máquina no fliperama
-      - APP_URL=http://192.168.X.X:8000 
+      - APP_URL=${APP_URL:-http://192.168.X.X} 
     depends_on:
       - db
 

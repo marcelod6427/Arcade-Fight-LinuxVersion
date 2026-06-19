@@ -309,7 +309,7 @@ class Fighter {
     }
 
     // ── Pulo (up — W/Espaço teclado, Cruz gamepad, D-pad cima) ──
-    if (input.up && this.noChao) {
+    if ((input.jump || input.up) && this.noChao) {
       this.vy     = PULO_FORCA;
       this.noChao = false;
     }
@@ -479,9 +479,9 @@ class Fighter {
 
     if (atacante) {
       atacante.pontos += dmgReal;
-      // Carga especial: causar 25% do próprio HP máximo em dano enche a barra
+      // Ajustado de 150 para 250 para um meio-termo mais dinâmico
       atacante.especialCharge = Math.min(100,
-        atacante.especialCharge + dmgReal * 400 / atacante.maxHp);
+        atacante.especialCharge + dmgReal * 250 / atacante.maxHp);
     }
 
     return dmgReal;
@@ -570,12 +570,12 @@ class IA {
 
     // Pulo ocasional (mais frequente em dificuldades maiores)
     if (Math.random() < 0.002 * ({ facil: 1, medio: 2, dificil: 3 }[this.nivel])) {
-      inp.up = true;
+      inp.jump = true; // <--- Modificado aqui
     }
 
     // Escreve no Controls para que Fighter.update() leia normalmente
     Controls.prev[f.player]  = { ...Controls.state[f.player], btn: [...Controls.state[f.player].btn] };
-    Controls.state[f.player] = { left: inp.left, right: inp.right, up: inp.up, down: inp.down, btn: [...inp.btn] };
+    Controls.state[f.player] = { left: inp.left, right: inp.right, up: inp.up, down: inp.down, jump: inp.jump, btn: [...inp.btn] };
   }
 }
 
@@ -652,28 +652,51 @@ function update(delta) {
 // Lê input dos jogadores para mover cursores e confirmar escolhas.
 // CPU (single player) escolhe automaticamente um personagem diferente do P1.
 function updateSelect() {
-  const totalPersonagens = PERSONAGENS_DEF.length; // vem de sprites.js
+  const totalPersonagens = PERSONAGENS_DEF.length; 
   const numPlayers = (salaModo === 'single') ? 1 : 2;
 
   for (let p = 0; p < numPlayers; p++) {
     if (selecao.escolhido[p] !== null) continue;
+
+    // Se o jogador estiver com o cursor virtual lá em cima no botão "Voltar"
+    if (selecao.noBotaoVoltar && selecao.noBotaoVoltar[p]) {
+      if (Controls.justPressed(p, 'down')) {
+        selecao.noBotaoVoltar[p] = false; // Desce o cursor para os personagens
+        document.getElementById('btnVoltar').classList.remove('focused');
+      }
+      // Se ele apertar o pulo (verde) ou o de ataque enquanto estiver sobre o "Voltar", ele aciona a função
+      if (Controls.justPressed(p, 'jump') || Controls.justPressed(p, 'b0')) {
+        document.getElementById('btnVoltar').classList.remove('focused');
+        if (window.voltarAoMenu) window.voltarAoMenu();
+        return;
+      }
+      continue; // Pula a lógica de mover pros lados se estiver lá em cima
+    }
+
+    // ── Navegação normal nos personagens ──
+    if (Controls.justPressed(p, 'up')) {
+      // Sobe o analógico: foca o botão de voltar!
+      if (!selecao.noBotaoVoltar) selecao.noBotaoVoltar = [false, false];
+      selecao.noBotaoVoltar[p] = true;
+      document.getElementById('btnVoltar').classList.add('focused');
+      continue;
+    }
 
     if (Controls.justPressed(p, 'left'))
       selecao.cursor[p] = Math.max(0, selecao.cursor[p] - 1);
     if (Controls.justPressed(p, 'right'))
       selecao.cursor[p] = Math.min(totalPersonagens - 1, selecao.cursor[p] + 1);
 
-    // Confirmar com 'up' (W/Espaço teclado, Cruz gamepad, D-pad cima)
-    if (Controls.justPressed(p, 'up')) {
+    // Confirmar com 'jump' (o botão verde ou espaço)
+    if (Controls.justPressed(p, 'jump')) {
       const escolha      = selecao.cursor[p];
       const outroPlayer  = p === 0 ? 1 : 0;
-      // Impede dois jogadores escolherem o mesmo personagem
       if (numPlayers === 2 && selecao.escolhido[outroPlayer] === escolha) continue;
       selecao.escolhido[p] = escolha;
     }
   }
 
-  // CPU escolhe aleatoriamente assim que P1 confirmar
+  // CPU escolhe aleatoriamente...
   if (numPlayers === 1 && selecao.escolhido[0] !== null && selecao.escolhido[1] === null) {
     let escolhaCpu;
     do {
@@ -706,6 +729,8 @@ function iniciarPartidaComEscolhas() {
   countdownVal   = 5;
   countdownTimer = 1000;
   gameState      = 'COUNTDOWN';
+
+  document.dispatchEvent(new CustomEvent('game:countdownIniciou'));
 }
 
 // =============================================================================
@@ -960,29 +985,45 @@ function _drawHUD() {
   }
 
   // ── Barra de carga especial P1 ──
+  // ── Barra de carga especial P1 ──
   if (fighters[0]) {
     const pct   = Math.min((fighters[0].especialCharge || 0) / 100, 1);
     const pronto = pct >= 1;
-    ctx.fillStyle = '#333';
-    ctx.fillRect(20, barY + barH + 8, 120, 8);
-    ctx.fillStyle = pronto ? '#ffd700' : '#ce93d8';
-    ctx.fillRect(20, barY + barH + 8, 120 * pct, 8);
-    ctx.fillStyle = pronto ? '#ffd700' : '#aaa';
-    ctx.font = '10px monospace'; ctx.textAlign = 'left';
-    ctx.fillText(pronto ? 'ESPECIAL!' : 'ESPECIAL', 24, barY + barH + 22);
+    const barYEsp = barY + barH + 12; // Desceu um pouco mais
+    
+    ctx.fillStyle = '#111'; // Fundo mais escuro
+    ctx.fillRect(20, barYEsp, 180, 14); // Ficou mais larga e alta
+    ctx.fillStyle = pronto ? '#ffd700' : '#8e44ad'; // Roxo medieval
+    ctx.fillRect(20, barYEsp, 180 * pct, 14);
+    
+    // Borda metálica medieval
+    ctx.strokeStyle = pronto ? '#fff' : '#b8860b'; // Dark goldenrod
+    ctx.lineWidth = 2;
+    ctx.strokeRect(20, barYEsp, 180, 14);
+    
+    ctx.fillStyle = pronto ? '#ffd700' : '#ccc';
+    ctx.font = 'bold 12px monospace'; ctx.textAlign = 'left';
+    ctx.fillText(pronto ? 'MAX ESPECIAL!' : 'ESPECIAL', 24, barYEsp + 26);
   }
 
   // ── Barra de carga especial P2 ──
   if (fighters[1]) {
     const pct   = Math.min((fighters[1].especialCharge || 0) / 100, 1);
     const pronto = pct >= 1;
-    ctx.fillStyle = '#333';
-    ctx.fillRect(W - 140, barY + barH + 8, 120, 8);
-    ctx.fillStyle = pronto ? '#ffd700' : '#ce93d8';
-    ctx.fillRect(W - 140, barY + barH + 8, 120 * pct, 8);
-    ctx.fillStyle = pronto ? '#ffd700' : '#aaa';
-    ctx.font = '10px monospace'; ctx.textAlign = 'right';
-    ctx.fillText(pronto ? 'ESPECIAL!' : 'ESPECIAL', W - 24, barY + barH + 22);
+    const barYEsp = barY + barH + 12;
+    
+    ctx.fillStyle = '#111';
+    ctx.fillRect(W - 200, barYEsp, 180, 14);
+    ctx.fillStyle = pronto ? '#ffd700' : '#8e44ad';
+    ctx.fillRect(W - 200 + 180 * (1 - pct), barYEsp, 180 * pct, 14); // Enche da direita pra esquerda
+    
+    ctx.strokeStyle = pronto ? '#fff' : '#b8860b';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(W - 200, barYEsp, 180, 14);
+    
+    ctx.fillStyle = pronto ? '#ffd700' : '#ccc';
+    ctx.font = 'bold 12px monospace'; ctx.textAlign = 'right';
+    ctx.fillText(pronto ? 'MAX ESPECIAL!' : 'ESPECIAL', W - 24, barYEsp + 26);
   }
 }
 
@@ -1236,7 +1277,7 @@ function iniciarFluxo(modo, id, tokenP1, tokenP2 = null) {
   salaTokenP2 = tokenP2;
   salaModo    = modo;
 
-  selecao = { cursor: [0, 1], escolhido: [null, null] };
+  selecao = { cursor: [0, 1], escolhido: [null, null], noBotaoVoltar: [false, false] };
 
   // Limpa teclas pressionadas e espelha estado do gamepad em prev
   // para que justPressed() não dispare para inputs já mantidos

@@ -63,7 +63,7 @@ warnings.filterwarnings("ignore")  # suprime avisos do passlib sobre bcrypt
 SECRET_KEY = os.getenv("SECRET_KEY", "arcade_fight_secret_2024")
 
 # APP_URL: base das URLs geradas nos QR Codes. Em produção = URL do Render.
-APP_URL    = os.getenv("APP_URL", "http://localhost:8000").rstrip("/")
+APP_URL    = os.getenv("APP_URL", "https://arcade.tmsi.paideiah.com.br/sala/criar").rstrip("/")
 
 ALGORITHM          = "HS256"
 TOKEN_EXPIRE_HOURS = 24  # JWTs expiram em 24h

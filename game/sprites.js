@@ -66,7 +66,7 @@ const PERSONAGENS_DEF = [
     especial: 'Impacto Sísmico',
     descEspecial: 'Salta e abala o chão causando dano em área',
     velocidade: 3.5,
-    dano: { leve: 11, forte: 20, especial: 28 },
+    dano: { leve: 8, forte: 16, especial: 24 },
     alcance: { normal: 110, especial: 135 }
   },
   {
@@ -78,7 +78,7 @@ const PERSONAGENS_DEF = [
     especial: 'Tempestade Arcana',
     descEspecial: 'Conjura três projéteis mágicos',
     velocidade: 4.0,
-    dano: { leve: 8, forte: 15, especial: 22 },
+    dano: { leve: 8, forte: 15, especial: 18 },
     alcance: { normal: 240, especial: 270 }
   },
   {
@@ -102,7 +102,7 @@ const PERSONAGENS_DEF = [
     especial: 'Sombra Veloz',
     descEspecial: 'Desmaterializa e reaparece atrás do inimigo',
     velocidade: 5.0,
-    dano: { leve: 10, forte: 18, especial: 24 },
+    dano: { leve: 9, forte: 16, especial: 20 },
     alcance: { normal: 130, especial: 155 }
   }
 ];

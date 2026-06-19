@@ -127,7 +127,7 @@
 
     /* ── Legenda de comandos (só durante a luta) ── */
     .legenda-controles {
-      position: absolute; top: 80px;
+      position: absolute; top: 125px;
       width: 200px; padding: 12px 14px;
       background: rgba(15,15,26,0.85);
       border-radius: 10px;
@@ -458,7 +458,9 @@
       🟡 Ataque rápido<br>
       ⚫ Ataque forte<br>
       🔴 Bloquear<br>
-      🔵 Especial
+      🔵 Especial<br>
+      <hr style="border: 0; border-top: 1px dashed #e94560; margin: 6px 0;">
+      ⚪ <b>F1/L2:</b> Voltar ao Menu
     </div>
 
     <div class="legenda-controles legenda-p2" id="legendaP2">
@@ -467,7 +469,9 @@
       🟡 Ataque rápido<br>
       ⚫ Ataque forte<br>
       🔴 Bloquear<br>
-      🔵 Especial
+      🔵 Especial<br>
+      <hr style="border: 0; border-top: 1px dashed #1565c0; margin: 6px 0;">
+      ⚪ <b>F4/R2:</b> Voltar ao Menu
     </div>
 
     <!-- Overlay QR placar (pós GAME OVER) -->
@@ -543,8 +547,14 @@
             <ul><li>github.com/marcelod6427/Arcade-Fight-IFSP</li></ul>
           </section>
           <section>
+            <div class="cred-titulo">Desenvolvedor</div>
+            <p style="font-size: 14px; color: #fff; font-weight: bold; margin-top: 4px;">Marcelo de Lima - TMSI</p>
+          </section>
+          
+          <section>
             <div class="cred-titulo">Ferramentas de IA</div>
             <ul>
+              <li><strong>Gemini Pro (Google)</strong> — auxílio na lógica estrutural, modificações e refatoração</li>
               <li><strong>Claude AI (Anthropic)</strong> — geração, revisão e refatoração de código</li>
               <li><strong>Suno AI</strong> — composição das trilhas sonoras do jogo</li>
               <li><strong>ChatGPT (OpenAI)</strong> — geração de imagens e pesquisa de conteúdo</li>
@@ -572,7 +582,7 @@
               <li>Frontend: HTML5 Canvas · CSS3 · JavaScript</li>
               <li>Backend: Python FastAPI · PostgreSQL</li>
               <li>Desktop: Electron.js · Node.js</li>
-              <li>Controles: Web Gamepad API · x360ce</li>
+              <li>Controles: Web Gamepad API</li> 
             </ul>
           </section>
         </div>
@@ -727,8 +737,8 @@
         const newAudio = this._tracks[key];
         if (!newAudio) return;
 
-        const STEPS    = 20;
-        const INTERVAL = 75;
+        const STEPS    = 10;
+        const INTERVAL = 45;
         this._currentKey = key;
         const target = this._effMusic();
 
@@ -827,23 +837,21 @@
     function ajustarTela() {
       const sw = window.innerWidth  || screen.width;
       const sh = window.innerHeight || screen.height;
-      const scale = Math.min(sw / 1280, sh / 720);
-      const cw   = Math.round(1280 * scale);
-      const ch   = Math.round(720  * scale);
-      const left = Math.round((sw - cw) / 2);
-      const top  = Math.round((sh - ch) / 2);
+      
+      // Ao invés de Math.min, calculamos as escalas X e Y independentes para esticar
+      const scaleX = sw / 1280;
+      const scaleY = sh / 720;
 
       const canvas = document.getElementById('gameCanvas');
-      canvas.style.left   = left + 'px';
-      canvas.style.top    = top  + 'px';
-      canvas.style.width  = cw   + 'px';
-      canvas.style.height = ch   + 'px';
+      canvas.style.left   = '0px';
+      canvas.style.top    = '0px';
+      canvas.style.width  = sw + 'px';
+      canvas.style.height = sh + 'px';
 
-      // Overlay mantém coordenadas 1280x720 e escala via transform
       const overlay = document.getElementById('overlay');
-      overlay.style.left            = left + 'px';
-      overlay.style.top             = top  + 'px';
-      overlay.style.transform       = `scale(${scale})`;
+      overlay.style.left            = '0px';
+      overlay.style.top             = '0px';
+      overlay.style.transform       = `scale(${scaleX}, ${scaleY})`;
       overlay.style.transformOrigin = 'top left';
     }
 
@@ -888,6 +896,7 @@
         el.classList.remove('visible');
         document.getElementById('btnConfig').classList.remove('visible');
         document.getElementById('btnFechar').classList.remove('visible');
+        document.getElementById('btnVoltar').classList.add('visible');
         esconder('painelDificuldade');
         esconder('painelQR');
         esconder('painelConfig');
@@ -903,9 +912,15 @@
         SoundManager.play('menu');
       });
 
+      // Adicione este novo listener para tocar a música logo no countdown
+      document.addEventListener('game:countdownIniciou', () => {
+        SoundManager.play('luta');
+        document.getElementById('btnVoltar').classList.remove('visible');
+      });
+
       document.addEventListener('game:lutaIniciou', () => {
         mostrarLegendas();
-        SoundManager.play('luta');
+        // Remova o SoundManager.play('luta') daqui, pois ele já vai tocar no countdown
       });
 
       document.addEventListener('game:gameOver', () => {
@@ -1017,7 +1032,14 @@
       if (_salaId) {
         try { Api.cancelarSala && Api.cancelarSala(_salaId); } catch(e) {}
       }
+      
+      // 1. Reseta a interface visual (HTML)
       mostrarBotoesInicio();
+      
+      // 2. Reseta a lógica interna do jogo (game.js) para TELA_INICIAL
+      if (window.Game && Game.voltarInicio) {
+        Game.voltarInicio();
+      }
     }
 
     // ── Sala + QR Code ────────────────────────────────────

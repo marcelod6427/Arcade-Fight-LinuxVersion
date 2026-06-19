@@ -80,12 +80,8 @@ class TelaInicialArcade:
             self.restaurar_tela()
 
     def rodar_script_bash(self, caminho_script):
-        # Mantemos o Tkinter em tela cheia no fundo de propósito.
-        # O bash vai chamar o Electron, e o Electron vai abrir por cima cobrindo tudo.
-        # Assim o usuário nunca vê a área de trabalho do sistema operacional!
-        subprocess.run(["bash", caminho_script])
-        
-        # Após o jogo ser fechado, instrui a thread principal (Tkinter) a restaurar a tela original
+        # O parâmetro "-l" força o bash a carregar o Node.js e variáveis de ambiente
+        subprocess.run(["bash", "-l", caminho_script])
         self.root.after(0, self.restaurar_tela)
 
     def restaurar_tela(self):
