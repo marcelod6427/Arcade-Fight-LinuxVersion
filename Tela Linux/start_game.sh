@@ -13,12 +13,46 @@ fi
 # Define a URL baseada no .env, ou usa localhost como plano B
 SERVER_URL=${APP_URL:-http://localhost:8000}
 
-# 2. Aguarda o servidor responder
-while ! curl -s "$SERVER_URL" > /dev/null; do
+# 2. Tenta conectar ao servidor remoto (Máximo de 5 tentativas)
+MAX_TENTATIVAS=5
+TENTATIVA=1
+SERVIDOR_ONLINE=false
+
+echo "Buscando servidor remoto em: $SERVER_URL"
+
+while [ $TENTATIVA -le $MAX_TENTATIVAS ]; do
+    # O curl tenta acessar silenciosamente. Se der sucesso (exit code 0), entra no IF
+    if curl -s "$SERVER_URL" > /dev/null; then
+        SERVIDOR_ONLINE=true
+        echo "Servidor remoto encontrado com sucesso!"
+        break
+    fi
+    
+    echo "Tentativa $TENTATIVA de $MAX_TENTATIVAS falhou. Aguardando 1s..."
     sleep 1
+    ((TENTATIVA++))
 done
 
-# 3. Inicia o jogo Electron
+# 3. Fallback (Plano B): Se a internet caiu ou o servidor falhou, roda local!
+if [ "$SERVIDOR_ONLINE" = false ]; then
+    echo "Servidor remoto inacessível. Iniciando modo OFFLINE (Docker local)..."
+    
+    # Navega para a raiz para poder rodar o compose
+    cd "$ROOT_DIR" || exit
+    
+    # Sobe o banco e a API na própria máquina do fliperama
+    podman-compose up -d
+    
+    # Aguarda a API local (localhost) ficar pronta para não abrir o jogo quebrado
+    echo "Aguardando API local iniciar..."
+    while ! curl -s "http://localhost:8000/" > /dev/null; do
+        sleep 1
+    done
+    echo "Servidor local pronto!"
+fi
+
+# 4. Inicia o jogo Electron
+echo "Iniciando a interface do Arcade..."
 cd "$ROOT_DIR/game" || exit
 npx electron . --no-sandbox
 
