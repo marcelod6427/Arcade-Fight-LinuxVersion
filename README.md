@@ -66,7 +66,7 @@ Durante qualquer partida, pressionar os botões **Single Player** ou **Multi Pla
 | Ataque forte | ⚫ Preto | ⚫ Preto |
 | Bloquear | 🔴 Vermelho | 🔴 Vermelho |
 | Especial | 🔵 Azul | 🔵 Azul |
-| Singleplayer | — | L2 |
+| Singleplayer | L2 | — |
 | Multiplayer | — | R2 |
 
 ---
