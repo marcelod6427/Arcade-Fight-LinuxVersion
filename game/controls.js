@@ -25,19 +25,16 @@ const Controls = {
     { left: false, right: false, up: false, down: false, jump: false, btn: [false, false, false, false, false] }
   ],
   // Mapeamento físico dos controles Arcade (Web Gamepad API):
-  //   up: índice do botão de pulo (verde)
-  //   buttons: índices dos botões físicos correspondentes às ações lógicas [b0, b1, b2, b3, b4]
-  //   l2, r2: botões de controle de menu/atalhos
-  //   axes: índices dos eixos horizontal e vertical do joystick analógico
-  //   deadzone: limite de sensibilidade do analógico para evitar drift
   mappings: [
-    { up: 3, buttons: [0, 4, 1, 2, -1], l2: 5, r2: -1, axes: [0,1], deadzone: 0.3 },
-    { up: 3, buttons: [0, 1, 4, 2, -1], l2: -1, r2: 5, axes: [0,1], deadzone: 0.3 }
+    // P1: Invertidos os valores '4' e '1' para alinhar Vermelho e Preto corretamente
+    { up: 3, buttons: [0, 1, 4, 2, -1], l2: 5, r2: -1, axes: [0,1], deadzone: 0.3 },
+    // P2: Invertidos os valores '1' e '4' para alinhar Vermelho e Preto corretamente
+    { up: 3, buttons: [0, 4, 1, 2, -1], l2: -1, r2: 5, axes: [0,1], deadzone: 0.3 }
   ],
   // Estado anterior dos botões L2/R2 para evitar múltiplos disparos rápidos em menus
   _menuPrev: [ { l2: false, r2: false }, { l2: false, r2: false } ],
 
-  // Mapeamento padrão do Teclado para o Player 1 (Teclas WASD + J/K/L/I/U)
+  // Mapeamento padrão do Teclado para o Player 1
   keymapP1: {
     'KeyA':  'left', 'KeyD':  'right', 'KeyW':  'up', 'KeyS':  'down',
     'Space': 'jump', // Pulo (Botão Verde ou Barra de Espaço)
@@ -50,7 +47,7 @@ const Controls = {
     'F2':    'r2'
   },
 
-  // Mapeamento padrão do Teclado para o Player 2 (Setas direcionais + Numpad)
+  // Mapeamento padrão do Teclado para o Player 2
   keymapP2: {
     'ArrowLeft': 'left', 'ArrowRight': 'right', 'ArrowUp': 'up', 'ArrowDown': 'down',
     'Numpad0':   'jump', // Pulo P2
@@ -97,7 +94,14 @@ const Controls = {
     }
 
     if (!navigator.getGamepads) return;
-    const pads = navigator.getGamepads();
+    const rawPads = navigator.getGamepads();
+    
+    // ========================================================================
+    // INVERSÃO DOS CONTROLES FÍSICOS AQUI:
+    // O OS reconheceu a placa da direita como pad 0 e a da esquerda como pad 1.
+    // Trocamos a ordem na leitura para que o P1 na UI seja o controle da esquerda.
+    // ========================================================================
+    const pads = [rawPads[1], rawPads[0]];
 
     for (let p = 0; p < 2; p++) {
       const pad = pads[p];
@@ -110,12 +114,12 @@ const Controls = {
 
       if (h < -dz) this.state[p].left  = true;
       if (h >  dz) this.state[p].right = true;
-      if (v < -dz) this.state[p].up    = true; // Agora o joystick pra cima registra 'up' direcional!
+      if (v < -dz) this.state[p].up    = true; 
       if (v >  dz) this.state[p].down  = true;
 
       const upBtn = pad.buttons[m.up];
       if (upBtn && (typeof upBtn === 'object' ? upBtn.pressed : upBtn > 0)) {
-        this.state[p].jump = true; // Botão físico verde registra a ação 'jump'
+        this.state[p].jump = true; 
       }
 
       for (let b = 0; b < 5; b++) {
@@ -127,7 +131,7 @@ const Controls = {
       }
     }
 
-    // Callbacks do L2/R2...
+    // Callbacks do L2/R2 (Botões de Menu)
     for (let p = 0; p < 2; p++) {
       const pad = pads[p];
       if (!pad || !pad.connected) { this._menuPrev[p].l2 = this._menuPrev[p].r2 = false; continue; }
@@ -175,30 +179,32 @@ const Controls = {
   resetInput() {
     this._ignoreInputFrames = 8;
     this._keysDown.clear();
+    
+    const rawPads = navigator.getGamepads ? navigator.getGamepads() : [null, null];
+    const pads = navigator.getGamepads ? [rawPads[1], rawPads[0]] : [null, null];
+
     for (let p = 0; p < 2; p++) {
       this.state[p].left = this.state[p].right = this.state[p].up = this.state[p].down = this.state[p].jump = false;
       for (let b = 0; b < 5; b++) this.state[p].btn[b] = false;
 
-      if (navigator.getGamepads) {
-        const pad = navigator.getGamepads()[p];
-        if (pad && pad.connected) {
-          const m  = this.mappings[p];
-          const dz = m.deadzone;
-          const h  = pad.axes[m.axes[0]] || 0;
-          const v  = pad.axes[m.axes[1]] || 0;
-          if (h < -dz) this.state[p].left  = true;
-          if (h >  dz) this.state[p].right = true;
-          if (v < -dz) this.state[p].up    = true;
-          if (v >  dz) this.state[p].down  = true;
-          const upBtn = pad.buttons[m.up];
-          if (upBtn && (typeof upBtn === 'object' ? upBtn.pressed : upBtn > 0)) {
-            this.state[p].jump = true;
-          }
-          for (let b = 0; b < 5; b++) {
-            if (m.buttons[b] < 0) continue;
-            const btn = pad.buttons[m.buttons[b]];
-            if (btn && (typeof btn === 'object' ? btn.pressed : btn > 0)) this.state[p].btn[b] = true;
-          }
+      const pad = pads[p];
+      if (pad && pad.connected) {
+        const m  = this.mappings[p];
+        const dz = m.deadzone;
+        const h  = pad.axes[m.axes[0]] || 0;
+        const v  = pad.axes[m.axes[1]] || 0;
+        if (h < -dz) this.state[p].left  = true;
+        if (h >  dz) this.state[p].right = true;
+        if (v < -dz) this.state[p].up    = true;
+        if (v >  dz) this.state[p].down  = true;
+        const upBtn = pad.buttons[m.up];
+        if (upBtn && (typeof upBtn === 'object' ? upBtn.pressed : upBtn > 0)) {
+          this.state[p].jump = true;
+        }
+        for (let b = 0; b < 5; b++) {
+          if (m.buttons[b] < 0) continue;
+          const btn = pad.buttons[m.buttons[b]];
+          if (btn && (typeof btn === 'object' ? btn.pressed : btn > 0)) this.state[p].btn[b] = true;
         }
       }
       this.prev[p].left  = this.state[p].left; this.prev[p].right = this.state[p].right;
@@ -206,7 +212,7 @@ const Controls = {
       this.prev[p].jump  = this.state[p].jump;
       for (let b = 0; b < 5; b++) this.prev[p].btn[b] = this.state[p].btn[b];
 
-      const padSnap = navigator.getGamepads ? navigator.getGamepads()[p] : null;
+      const padSnap = pads[p];
       const mSnap = this.mappings[p];
       const _bSnap = idx => {
         if (idx < 0 || !padSnap || !padSnap.connected) return false;

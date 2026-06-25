@@ -1,7 +1,10 @@
+#!/usr/bin/env python3
 import tkinter as tk
 import threading
 import subprocess
 import os
+import struct
+import time  # <-- Adicionado para controlar o tempo (cooldown)
 
 class TelaInicialArcade:
     def __init__(self, root):
@@ -14,16 +17,14 @@ class TelaInicialArcade:
         self.text_color = "#cdcdde"
         self.accent_color = "#ff007f"
         
-        # Trava para evitar que múltiplos jogos abram se o jogador apertar várias vezes
         self.jogo_em_execucao = False 
+        self.tempo_fechamento = 0  # <-- Registra o momento em que o jogo fechou
         
         self.root.configure(bg=self.bg_color)
         self.root.bind("<KeyPress>", self.iniciar_jogo)
         
         self.construir_interface()
-        
-        # A função acordar_servidor_render foi removida, 
-        # pois o servidor local via Docker não dorme e liga instantaneamente.
+        self.iniciar_escuta_gamepads()
 
     def construir_interface(self):
         container = tk.Frame(self.root, bg=self.bg_color)
@@ -45,7 +46,7 @@ class TelaInicialArcade:
         descricao = tk.Label(container, text=texto_home, font=("Segoe UI", 16), fg=self.text_color, bg=self.bg_color, justify="center")
         descricao.pack(pady=(0, 40))
 
-        texto_equipe = "EQUIPE: Marcelo de Lima | Piero Tubino | Antonio Mariano | Davi Paulino | Joao Victor"
+        texto_equipe = "EQUIPE: Marcelo de Lima | Piero Tubino | Antonio Mariano | Davi Paulino | Joao Victor | Lucas Neves"
         equipe = tk.Label(container, text=texto_equipe, font=("Segoe UI", 12), fg=self.title_color, bg=self.bg_color)
         equipe.pack(pady=(0, 60))
 
@@ -59,10 +60,39 @@ class TelaInicialArcade:
         self.lbl_start.config(fg=nova_cor)
         self.root.after(600, self.piscar_texto)
 
-    def iniciar_jogo(self, event):
-        # Se o jogo já estiver rodando, ignora qualquer novo botão apertado
+    def iniciar_escuta_gamepads(self):
+        caminhos_joystick = ['/dev/input/js0', '/dev/input/js1', '/dev/input/js2', '/dev/input/js3']
+        
+        def ler_dispositivo(caminho):
+            try:
+                with open(caminho, 'rb') as f:
+                    while True:
+                        evento = f.read(8) # <-- Lê o evento SEMPRE para esvaziar o buffer do Linux
+                        
+                        if self.jogo_em_execucao:
+                            continue # Se o jogo tá rodando, joga o clique no lixo e volta pro loop
+                            
+                        if evento:
+                            _, value, evt_type, _ = struct.unpack('IhBB', evento)
+                            if evt_type == 1 and value == 1:
+                                self.root.after(0, self.iniciar_jogo, None)
+            except FileNotFoundError:
+                pass
+            except Exception as e:
+                print(f"Erro ao ler {caminho}: {e}")
+
+        for caminho in caminhos_joystick:
+            t = threading.Thread(target=ler_dispositivo, args=(caminho,))
+            t.daemon = True
+            t.start()
+
+    def iniciar_jogo(self, event=None):
         if self.jogo_em_execucao:
             return 
+            
+        # Cooldown de 2.0 segundos: ignora cliques se fechou há menos de 2 segundos
+        if time.time() - self.tempo_fechamento < 2.0:
+            return
             
         self.jogo_em_execucao = True
         self.lbl_start.config(text="CARREGANDO SISTEMA... AGUARDE")
@@ -71,20 +101,23 @@ class TelaInicialArcade:
         caminho_script = os.path.join(diretorio_atual, "start_game.sh")
         
         if os.path.exists(caminho_script):
-            # Inicia uma thread para rodar o script sem travar o loop do Tkinter
-            thread_jogo = threading.Thread(target=self.rodar_script_bash, args=(caminho_script,))
-            thread_jogo.daemon = True
-            thread_jogo.start()
+            t_jogo = threading.Thread(
+                target=self.rodar_script_bash, 
+                args=(caminho_script,)
+            )
+            t_jogo.daemon = True
+            t_jogo.start()
         else:
-            print(f"Erro: O arquivo não foi encontrado em {caminho_script}")
+            print(f"Erro: O arquivo nao foi encontrado em {caminho_script}")
             self.restaurar_tela()
 
     def rodar_script_bash(self, caminho_script):
-        # O parâmetro "-l" força o bash a carregar o Node.js e variáveis de ambiente
         subprocess.run(["bash", "-l", caminho_script])
         self.root.after(0, self.restaurar_tela)
 
     def restaurar_tela(self):
+        # Salva o exato momento em que o jogo foi encerrado
+        self.tempo_fechamento = time.time()
         self.jogo_em_execucao = False
         self.lbl_start.config(text="PRESSIONE QUALQUER BOTAO PARA INICIAR JOGO")
 
